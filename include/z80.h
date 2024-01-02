@@ -2,21 +2,794 @@
 #define Z80_LIBRARY_H
 
 #include <cstdint>
+#include <algorithm>
+#include <bit>
+#include <array>
 
+using u8 = std::uint8_t;
+using u16 = std::uint16_t;
+using u32 = std::uint32_t;
+using s8 = std::int8_t;
+
+/**
+ * \brief
+ * \tparam Memory
+ */
+template<typename Memory>
 class z80 {
 public:
-    int step();
-    virtual void writeByte();
-    virtual void writeWord();
-    virtual std::uint8_t readByte();
-    virtual std::uint16_t readWord();
-private:
+    /**
+     * \brief
+     * \param cycles
+     * \return
+     */
+    int run(int cycles);
+    void interrupt();
 
+    /**
+     * \brief
+     * \param addr
+     * \param val
+     */
+    void write(u16 addr, u8 val) { memory.write(addr, val); }
+
+    /**
+     * \brief
+     * \param addr
+     * \param val
+     */
+    void write(u16 addr, u16 val) { memory.write(addr, val); }
+
+    /**
+     * \brief
+     * \param addr
+     * \return
+     */
+    u8 read8(u16 addr) { return memory.read8(addr); }
+
+    /**
+     * \brief
+     * \param addr
+     * \return
+     */
+    u16 read16(u16 addr) { return memory.read16(addr); }
+
+    /**
+     * \brief Flags are stored separetly, to get them as a single status byte they must be or'd together.
+     * \return The flag register as a single byte.
+     */
+    [[nodiscard]] u8 flag_() const { return flags.sf | flags.zf | flags.yf | flags.hf | flags.xf | flags.pf | flags.nf | flags.cf; }
+
+    // internals
+    struct Registers {
+        u8 a {}, b {}, c {}, d {}, e {}, h {}, l {};
+    };
+    struct Flags {
+        u8 sf {}, zf {}, yf {}, hf {}, xf {}, pf {}, nf {}, cf {};
+    };
+
+    Registers regs {};
+    Flags flags {};
+    u16 pc {}, sp {}, ix {}, iy {};
+    u8 i {}, r {};
+private:
+    static constexpr u8 sbit {0b10000000}; // bit 7: sign flag
+    static constexpr u8 zbit {0b01000000}; // bit 6: zero flag
+    static constexpr u8 ybit {0b00100000}; // bit 5: undocumented flag (copy of bit 5 of the result)
+    static constexpr u8 hbit {0b00010000}; // bit 4: half-carry flag
+    static constexpr u8 xbit {0b00001000}; // bit 3: undocumented flag (copy of bit 3 of the result)
+    static constexpr u8 pbit {0b00000100}; // bit 2: parity flag
+    static constexpr u8 nbit {0b00000010}; // bit 1: add/subtract flag
+    static constexpr u8 cbit {0b00000001}; // bit 0: carry flag
+
+    enum class AddressMode {
+        Immediate,
+        ImmediateEx,
+        Extended,
+        IndexedIX,
+        IndexedIY,
+        Accumulator,
+        RegisterB,
+        RegisterC,
+        RegisterD,
+        RegisterE,
+        RegisterH,
+        RegisterL,
+        RegisterBC,
+        RegisterDE,
+        RegisterHL,
+        RegisterSP,
+        RegisterIX,
+        RegisterIY,
+        RegisterIndirectBC,
+        RegisterIndirectDE,
+        RegisterIndirectHL,
+        RegisterIndirectSP,
+    };
+    enum class Condition { Null, C, NC, Z, NZ };
+
+    template<AddressMode mode>
+    void setOperand(u16 val)
+    {
+        switch (mode) {
+            case AddressMode::Extended: write(fetch16(), val); return;
+            case AddressMode::IndexedIX: write(fetch8() + ix, val); return;
+            case AddressMode::IndexedIY: write(fetch8() + iy, val); return;
+            case AddressMode::Accumulator: regs.a = val; return;
+            case AddressMode::RegisterB: regs.b = val; return;
+            case AddressMode::RegisterC: regs.c = val; return;
+            case AddressMode::RegisterD: regs.d = val; return;
+            case AddressMode::RegisterE: regs.e = val; return;
+            case AddressMode::RegisterH: regs.h = val; return;
+            case AddressMode::RegisterL: regs.l = val; return;
+            case AddressMode::RegisterBC: regs.b = val >> 8; regs.c = val & 0xFF; return;
+            case AddressMode::RegisterDE: regs.d = val >> 8; regs.e = val & 0xFF; return;
+            case AddressMode::RegisterHL: regs.h = val >> 8; regs.l = val & 0xFF; return;
+            case AddressMode::RegisterSP: sp = val; return;
+            case AddressMode::RegisterIX: ix = val; return;
+            case AddressMode::RegisterIY: iy = val; return;
+            case AddressMode::RegisterIndirectBC: write(regs.b << 8 | regs.c, val); return;
+            case AddressMode::RegisterIndirectDE: write(regs.d << 8 | regs.e, val); return;
+            case AddressMode::RegisterIndirectHL: write(regs.h << 8 | regs.l, val); return;
+            case AddressMode::RegisterIndirectSP: write(sp, val); return;
+        }
+    }
+
+    template<AddressMode mode>
+    u16 getOperand()
+    {
+        switch (mode) {
+            case AddressMode::Immediate: return fetch8();
+            case AddressMode::ImmediateEx: return fetch16();
+            case AddressMode::Extended: return read8(fetch16());
+            case AddressMode::IndexedIX: return read8(fetch8() + ix);
+            case AddressMode::IndexedIY: return read8(fetch8() + iy);
+            case AddressMode::Accumulator: return regs.a;
+            case AddressMode::RegisterB: return regs.b;
+            case AddressMode::RegisterC: return regs.c;
+            case AddressMode::RegisterD: return regs.d;
+            case AddressMode::RegisterE: return regs.e;
+            case AddressMode::RegisterH: return regs.h;
+            case AddressMode::RegisterL: return regs.l;
+            case AddressMode::RegisterBC: return regs.b << 8 | regs.c;
+            case AddressMode::RegisterDE: return regs.d << 8 | regs.e;
+            case AddressMode::RegisterHL: return regs.h << 8 | regs.l;
+            case AddressMode::RegisterSP: return sp;
+            case AddressMode::RegisterIX: return ix;
+            case AddressMode::RegisterIY: return iy;
+            case AddressMode::RegisterIndirectBC: return read8(regs.b << 8 | regs.c);
+            case AddressMode::RegisterIndirectDE: return read8(regs.d << 8 | regs.e);
+            case AddressMode::RegisterIndirectHL: return read8(regs.h << 8 | regs.l);
+            case AddressMode::RegisterIndirectSP: return read8(sp);
+        }
+    }
+
+    template<Condition cond>
+    bool getCondition()
+    {
+        switch (cond) {
+            case Condition::C: return flags.cf != 0;
+            case Condition::NC: return flags.cf == 0;
+            case Condition::Z: return flags.zf != 0;
+            case Condition::NZ: return flags.zf == 0;
+            case Condition::Null: return true;
+        }
+    }
+
+    /**
+     * \brief Internal function used to execute a single instruction (macro op).
+     */
+    void tick();
+
+    // Helper member functions
+    [[nodiscard]] static bool carry(const u16 sum) { return sum > 0xFFU; }
+    [[nodiscard]] static bool carry(const u32 sum) { return sum > 0xFFFFU; }
+    [[nodiscard]] static bool halfcy(const u8 addend, const u8 augend, const u16 sum) { return (addend ^ augend ^ sum) & 0x10U; }
+    [[nodiscard]] static bool halfcy(const u16 addend, const u16 augend, const u32 sum) { return (addend ^ augend ^ sum) & 0x100U; }
+    [[nodiscard]] static bool underflow(const u8 addend, const u8 augend, const u16 sum) { return ((addend ^ sum) & (augend ^ sum) & 0x80U) != 0; }
+    [[nodiscard]] static bool overflow(const u8 minuend, const u8 subtrahend, const u16 difference) { return ((difference ^ minuend) & (subtrahend ^ minuend) & 0x80U) != 0; }
+    [[nodiscard]] static bool borrow(const u8 minuend, const u8 subtrahend) { return minuend < subtrahend; }
+    [[nodiscard]] static bool halfbw(const u8 minuend, const u8 subtrahend, const u16 difference) { return ~(minuend ^ subtrahend ^ difference) & 0x10U; }
+    [[nodiscard]] u8 fetch8() { return read8(pc++); }
+    [[nodiscard]] u16 fetch16() { pc += 2; return read16(pc - 2); };
+    void lflags()
+    {
+        flags.cf = 0;
+        flags.nf = 0;
+        flags.hf = 0;
+        flags.pf = std::popcount(regs.a) % 2 == 0 ? pbit : 0;
+        flags.sf = regs.a & sbit;
+        flags.zf = regs.a == 0 ? zbit : 0;
+        flags.yf = regs.a & ybit;
+        flags.xf = regs.a & xbit;
+    }
+
+    // Load and Exchange
+    template<AddressMode mode1, AddressMode mode2>
+    void ld() { setOperand<mode1>(getOperand<mode2>()); }
+
+    void exaf()
+    {
+        std::swap(regs.a, regs2.a);
+        std::swap(flags, flags2);
+    }
+
+    // Black Transfer and Search
+
+    // Arithmetic and Logical
+    template<AddressMode mode>
+    void add8()
+    {
+        const u8 augend {static_cast<u8>(getOperand<mode>())};
+        const u16 sum {static_cast<u16>(regs.a + augend)};
+        flags.cf = carry(sum) ? cbit : 0;
+        flags.hf = halfcy(regs.a, augend, sum) ? hbit : 0;
+        flags.pf = underflow(regs.a, augend, sum) ? pbit : 0;
+        flags.nf = 0;
+        flags.yf = sum & ybit;
+        flags.xf = sum & xbit;
+        regs.a = static_cast<u8>(sum);
+    }
+
+    template<AddressMode mode>
+    void adc8()
+    {
+        const u8 augend {static_cast<u8>(getOperand<mode>())};
+        const u16 sum {static_cast<u16>(regs.a + augend + flags.cf)};
+        flags.cf = carry(sum) ? cbit : 0;
+        flags.hf = halfcy(regs.a, augend, sum) ? hbit : 0;
+        flags.pf = underflow(regs.a, augend, sum) != 0 ? pbit : 0;
+        flags.nf = 0;
+        flags.yf = sum & ybit;
+        flags.xf = sum & xbit;
+        regs.a = static_cast<u8>(sum);
+    }
+
+    template<AddressMode mode>
+    void sub()
+    {
+        const u8 subtrahend {static_cast<u8>(getOperand<mode>())};
+        const u16 difference {static_cast<u16>(regs.a - subtrahend)};
+        flags.cf = borrow(regs.a, subtrahend) ? cbit : 0;
+        flags.hf = halfbw(regs.a, subtrahend, difference) ? hbit : 0;
+        flags.pf = overflow(regs.a, subtrahend, difference) ? pbit : 0;
+        flags.nf = 0;
+        flags.yf = difference & ybit;
+        flags.xf = difference & xbit;
+        regs.a = static_cast<u8>(difference);
+    }
+
+    template<AddressMode mode>
+    void sbc8()
+    {
+        const u8 subtrahend {static_cast<u8>(getOperand<mode>())};
+        const u16 difference {static_cast<u16>(regs.a - subtrahend - flags.cf)};
+        flags.cf = borrow(regs.a, subtrahend + flags.cf) ? cbit : 0;
+        flags.hf = halfbw(regs.a, subtrahend, difference) ? hbit : 0;
+        flags.pf = overflow(regs.a, subtrahend, difference) ? pbit : 0;
+        flags.nf = 0;
+        flags.yf = difference & ybit;
+        flags.xf = difference & xbit;
+        regs.a = static_cast<u8>(difference);
+    }
+
+    template<AddressMode mode>
+    void inc8()
+    {
+        const u8 operand {static_cast<u8>(getOperand<mode>())};
+        const u8 res {static_cast<u8>(operand + 1U)};
+        flags.hf = (operand & 0xFU) == 0; // only case for half carry is 0b1111 + 0b1 = 0b10000;
+        flags.pf = underflow(operand, 1U, res) != 0 ? pbit : 0;
+        flags.nf = 0;
+        flags.sf = res & sbit;
+        flags.zf = res == 0 ? zbit : 0;
+        flags.yf = res & ybit;
+        flags.xf = res & xbit;
+        setOperand<mode>(res);
+    }
+
+    template<AddressMode mode>
+    void dec8()
+    {
+        u8 operand {static_cast<u8>(getOperand<mode>())};
+        const u8 res {--operand};
+        flags.hf = (operand & 0xFU) != 0xF; // only case for half borrow is 0b10000 - 0b1 = 0b1111
+        flags.pf = overflow(operand, 1U, res) != 0 ? pbit : 0;
+        flags.nf = nbit;
+        flags.sf = res & sbit;
+        flags.zf = res == 0 ? zbit : 0;
+        flags.yf = res & ybit;
+        flags.xf = res & xbit;
+        setOperand<mode>(res);
+    }
+
+    template<AddressMode mode>
+    void land()
+    {
+        regs.a &= getOperand<mode>();
+        lflags();
+    }
+
+    template<AddressMode mode>
+    void lxor()
+    {
+        regs.a ^= getOperand<mode>();
+        lflags();
+    }
+
+    template<AddressMode mode>
+    void lor()
+    {
+        regs.a |= getOperand<mode>();
+        lflags();
+    }
+
+    template<AddressMode mode>
+    void cp()
+    {
+        const u8 subtrahend {static_cast<u8>(getOperand<mode>())};
+        const u16 difference {static_cast<u16>(regs.a - subtrahend)};
+        flags.cf = borrow(regs.a, subtrahend) ? cbit : 0;
+        flags.hf = halfbw(regs.a, subtrahend, difference) ? hbit : 0;
+        flags.pf = overflow(regs.a, subtrahend, difference) ? pbit : 0;
+        flags.nf = 0;
+        flags.yf = subtrahend & ybit;
+        flags.xf = subtrahend & xbit;
+    }
+
+    template<AddressMode mode1, AddressMode mode2>
+    void add16()
+    {
+        const u16 addend {getOperand<mode1>()};
+        const u16 augend {getOperand<mode2>()};
+        const u32 sum {static_cast<u32>(addend + augend)};
+        flags.cf = carry(sum) ? cbit : 0;
+        flags.hf = halfcy(addend, augend, sum) ? hbit : 0;
+        flags.nf = 0;
+        flags.yf = sum & ybit;
+        flags.xf = sum & xbit;
+        setOperand<mode1>(static_cast<u16>(sum));
+    }
+
+    template<AddressMode mode>
+    void inc16() { setOperand<mode>(getOperand<mode>() + 1); }
+
+    template<AddressMode mode>
+    void dec16() { setOperand<mode>(getOperand<mode>() + 1); }
+
+    void cpl()
+    {
+        regs.a = ~regs.a;
+        flags.nf = nbit;
+        flags.hf = hbit;
+    }
+
+    void ccf()
+    {
+        flags.cf = flags.cf ? 0 : cbit;
+        flags.hf = flags.cf;
+        flags.nf = 0;
+    }
+
+    void scf()
+    {
+        flags.cf = cbit;
+        flags.nf = 0;
+        flags.hf = 0;
+    }
+
+    void daa()
+    {
+        u8 correction = 0;
+        flags.cf = 0;
+
+        if (flags.hf or (!flags.nf and (regs.a & 0xF) > 9)) {
+            correction |= 0x6;
+        }
+
+        if (flags.cf or (!flags.nf and (regs.a & 0xF0) > 0x99)) {
+            correction |= 0x60;
+            flags.cf = cbit;
+        }
+
+        regs.a += flags.nf ? -correction : correction;
+        flags.pf = std::popcount(regs.a) % 2 == 0 ? pbit : 0;
+        flags.sf = regs.a & sbit;
+        flags.zf = regs.a == 0 ? zbit : 0;
+        flags.yf = regs.a & ybit;
+        flags.xf = regs.a & xbit;
+    }
+
+    // Rotate and Shift
+    void rlca()
+    {
+        flags.cf = regs.a & 0x80U ? cbit : 0;
+        regs.a <<= 7U | flags.cf;
+        flags.hf = 0;
+        flags.nf = 0;
+        flags.yf = regs.a & ybit;
+        flags.xf = regs.a & xbit;
+    }
+
+    void rrca()
+    {
+        flags.cf = regs.a & 0x01U ? cbit : 0;
+        regs.a >>= 1U | flags.cf << 7U;
+        flags.hf = 0;
+        flags.nf = 0;
+        flags.yf = regs.a & ybit;
+        flags.xf = regs.a & xbit;
+    }
+
+    void rla()
+    {
+        const u8 temp {flags.cf};
+        flags.cf = regs.a & 0x80U ? cbit : 0;
+        regs.a <<= 7U | temp;
+        flags.hf = 0;
+        flags.nf = 0;
+        flags.yf = regs.a & ybit;
+        flags.xf = regs.a & xbit;
+    }
+
+    void rra()
+    {
+        const u8 temp {flags.cf};
+        flags.cf = regs.a & 0x01U ? cbit : 0;
+        regs.a >>= 1U | temp << 7U;
+        flags.hf = 0;
+        flags.nf = 0;
+        flags.yf = regs.a & ybit;
+        flags.xf = regs.a & xbit;
+    }
+
+    // Bit Manipulation
+
+    // Jump, Call, and Return
+    void djnz()
+    {
+        if (--regs.b != 0 ) {
+            const s8 val {static_cast<s8>(read8(pc))};
+            pc += val;
+        }
+    }
+
+    template<Condition cond>
+    void jr()
+    {
+        if (getCondition<cond>()) {
+            const s8 val {static_cast<s8>(read8(pc))};
+            pc += val;
+        }
+    }
+
+    // Input/Output
+
+    // CPU Control Group
+    void nop() { }
+    void halt() { } // TODO: implement this
+
+    // Main Instructions
+    static constexpr std::array<void (z80::*)(), 256> instruction {
+        &z80::nop, // $00: nop
+        &z80::ld<AddressMode::RegisterBC, AddressMode::ImmediateEx>, // $01: ld bc, nn
+        &z80::ld<AddressMode::RegisterIndirectBC, AddressMode::Accumulator>, // $02: ld (bc), a
+        &z80::inc16<AddressMode::RegisterBC>, // $03: inc bc
+        &z80::inc8<AddressMode::RegisterB>, // $04: inc b
+        &z80::dec8<AddressMode::RegisterB>, // $05: dec b
+        &z80::ld<AddressMode::RegisterB, AddressMode::Immediate>, // $06: ld b, n
+        &z80::rlca, // $07: rlca,
+        &z80::exaf, // $08: ex af, af'
+        &z80::add16<AddressMode::RegisterHL, AddressMode::RegisterBC>, // $09: add hl, bc
+        &z80::ld<AddressMode::Accumulator, AddressMode::RegisterIndirectBC>, // $0A: ld a, (bc)
+        &z80::dec16<AddressMode::RegisterBC>, // $0B: dec bc
+        &z80::inc8<AddressMode::RegisterC>, // $0C: inc c
+        &z80::dec8<AddressMode::RegisterC>, // $0D: dec c
+        &z80::ld<AddressMode::RegisterC, AddressMode::Immediate>, // $0E: ld c, n
+        &z80::rrca, // $0F: rrca
+        &z80::djnz, // $10: djnz d
+        &z80::ld<AddressMode::RegisterDE, AddressMode::ImmediateEx>, // $11: ld de, nn
+        &z80::ld<AddressMode::RegisterIndirectDE, AddressMode::Accumulator>, // $12: ld (de), a
+        &z80::inc16<AddressMode::RegisterDE>, // $13: inc de
+        &z80::inc8<AddressMode::RegisterD>, // $14: inc d
+        &z80::dec8<AddressMode::RegisterD>, // $15: dec d
+        &z80::ld<AddressMode::RegisterD, AddressMode::Immediate>, // $16: ld d, n
+        &z80::rla, // $17: rla
+        &z80::jr<Condition::Null>, // $18: jr d
+        &z80::add16<AddressMode::RegisterHL, AddressMode::RegisterDE>, // $19: add hl, de
+        &z80::ld<AddressMode::Accumulator, AddressMode::RegisterIndirectDE>, // $1A: ld a, (de)
+        &z80::dec16<AddressMode::RegisterDE>, // $1B: dec de
+        &z80::inc8<AddressMode::RegisterE>, // $1C: inc e
+        &z80::dec8<AddressMode::RegisterE>, // $1D: dec e
+        &z80::ld<AddressMode::RegisterE, AddressMode::Immediate>, // $1E: ld e, n
+        &z80::rra, // $1F: rra
+        &z80::jr<Condition::NZ>, // $20: jr nz, d
+        &z80::ld<AddressMode::RegisterHL, AddressMode::ImmediateEx>, // $21: ld hl, nn
+        &z80::ld<AddressMode::Extended, AddressMode::RegisterHL>, // $22: ld (nn), hl
+        &z80::inc16<AddressMode::RegisterHL>, // $23: inc hl
+        &z80::inc8<AddressMode::RegisterH>, // $24: inc h
+        &z80::dec8<AddressMode::RegisterH>, // $25: dec h
+        &z80::ld<AddressMode::RegisterH, AddressMode::Immediate>, // $26: ld h, n
+        &z80::daa, // $27: daa
+        &z80::jr<Condition::Z>, // $28: jr z, d
+        &z80::add16<AddressMode::RegisterHL, AddressMode::RegisterHL>, // $29: add hl, hl
+        &z80::ld<AddressMode::RegisterHL, AddressMode::Extended>, // $2A: ld hl, (nn)
+        &z80::dec16<AddressMode::RegisterHL>, // $2B: dec hl
+        &z80::inc8<AddressMode::RegisterL>, // $2C: inc l
+        &z80::dec8<AddressMode::RegisterL>, // $2D: dec l
+        &z80::ld<AddressMode::RegisterL, AddressMode::Immediate>, // $2E: ld l, n
+        &z80::cpl, // $2F: cpl
+        &z80::jr<Condition::NC>, // $30: jr nc, d
+        &z80::ld<AddressMode::RegisterSP, AddressMode::ImmediateEx>, // $31 ld sp, nn
+        &z80::ld<AddressMode::Extended, AddressMode::Accumulator>, // $32: ld (nn), a
+        &z80::inc16<AddressMode::RegisterSP>, // $33: inc sp
+        &z80::inc8<AddressMode::RegisterIndirectHL>, // $34: inc (hl)
+        &z80::dec8<AddressMode::RegisterIndirectHL>, // $35: dec (hl)
+        &z80::ld<AddressMode::RegisterIndirectHL, AddressMode::Immediate>, // $36: ld (hl), n
+        &z80::scf, // $37: scf
+        &z80::jr<Condition::C>, // $38: jr c, d
+        &z80::add16<AddressMode::RegisterHL, AddressMode::RegisterSp>, // $39: add hl, sp
+        &z80::ld<AddressMode::Accumulator, AddressMode::Extended>, // $3A: ld a, (nn)
+        &z80::dec16<AddressMode::RegisterSP>, // $3B: dec sp
+        &z80::inc8<AddressMode::Accumulator>, // $3C: inc a
+        &z80::dec8<AddressMode::Accumulator>, // $3D: dec a
+        &z80::ld<AddressMode::Accumulator, AddressMode::Immediate>, // $3E: ld a, n
+        &z80::ccf, // $3F: ccf
+        &z80::ld<AddressMode::RegisterB, AddressMode::RegisterB>, // 40: ld b, b
+        &z80::ld<AddressMode::RegisterB, AddressMode::RegisterC>, // 41: ld b, c
+        &z80::ld<AddressMode::RegisterB, AddressMode::RegisterD>, // 42: ld b, d
+        &z80::ld<AddressMode::RegisterB, AddressMode::RegisterE>, // 43: ld b, e
+        &z80::ld<AddressMode::RegisterB, AddressMode::RegisterH>, // 44: ld b, h
+        &z80::ld<AddressMode::RegisterB, AddressMode::RegisterL>, // 45: ld b, l
+        &z80::ld<AddressMode::RegisterB, AddressMode::RegisterIndirectHL>, // 46: ld b, (hl)
+        &z80::ld<AddressMode::RegisterB, AddressMode::Accumulator>, // 47: ld c, a
+        &z80::ld<AddressMode::RegisterC, AddressMode::RegisterB>, // 48: ld c, b
+        &z80::ld<AddressMode::RegisterC, AddressMode::RegisterC>, // 49: ld c, c
+        &z80::ld<AddressMode::RegisterC, AddressMode::RegisterD>, // 4A: ld c, d
+        &z80::ld<AddressMode::RegisterC, AddressMode::RegisterE>, // 4B: ld c, e
+        &z80::ld<AddressMode::RegisterC, AddressMode::RegisterH>, // 4C: ld c, h
+        &z80::ld<AddressMode::RegisterC, AddressMode::RegisterL>, // 4D: ld c, l
+        &z80::ld<AddressMode::RegisterC, AddressMode::RegisterIndirectHL>, // 4E: ld c, (hl)
+        &z80::ld<AddressMode::RegisterC, AddressMode::Accumulator>, // 4F: ld c, a
+        &z80::ld<AddressMode::RegisterD, AddressMode::RegisterB>, // 50: ld d, b
+        &z80::ld<AddressMode::RegisterD, AddressMode::RegisterC>, // 51: ld d, c
+        &z80::ld<AddressMode::RegisterD, AddressMode::RegisterD>, // 52: ld d, d
+        &z80::ld<AddressMode::RegisterD, AddressMode::RegisterE>, // 53: ld d, e
+        &z80::ld<AddressMode::RegisterD, AddressMode::RegisterH>, // 54: ld d, h
+        &z80::ld<AddressMode::RegisterD, AddressMode::RegisterL>, // 55: ld d, l
+        &z80::ld<AddressMode::RegisterD, AddressMode::RegisterIndirectHL>, // 56: ld d, (hl)
+        &z80::ld<AddressMode::RegisterD, AddressMode::Accumulator>, // 57: ld d, a
+        &z80::ld<AddressMode::RegisterE, AddressMode::RegisterB>, // 58: ld e, b
+        &z80::ld<AddressMode::RegisterE, AddressMode::RegisterC>, // 59: ld e, c
+        &z80::ld<AddressMode::RegisterE, AddressMode::RegisterD>, // 5A: ld e, d
+        &z80::ld<AddressMode::RegisterE, AddressMode::RegisterE>, // 5B: ld e, e
+        &z80::ld<AddressMode::RegisterE, AddressMode::RegisterH>, // 5C: ld e, h
+        &z80::ld<AddressMode::RegisterE, AddressMode::RegisterL>, // 5D: ld e, l
+        &z80::ld<AddressMode::RegisterE, AddressMode::RegisterIndirectHL>, // 5E: ld e, (hl)
+        &z80::ld<AddressMode::RegisterE, AddressMode::Accumulator>, // 5F: ld e, a
+        &z80::ld<AddressMode::RegisterH, AddressMode::RegisterB>, // 60: ld h, b
+        &z80::ld<AddressMode::RegisterH, AddressMode::RegisterC>, // 61: ld h, c
+        &z80::ld<AddressMode::RegisterH, AddressMode::RegisterD>, // 62: ld h, d
+        &z80::ld<AddressMode::RegisterH, AddressMode::RegisterE>, // 63: ld h, e
+        &z80::ld<AddressMode::RegisterH, AddressMode::RegisterH>, // 64: ld h, h
+        &z80::ld<AddressMode::RegisterH, AddressMode::RegisterL>, // 65: ld h, l
+        &z80::ld<AddressMode::RegisterH, AddressMode::RegisterIndirectHL>, // 66: ld h, (hl)
+        &z80::ld<AddressMode::RegisterH, AddressMode::Accumulator>, // 67: ld h, a
+        &z80::ld<AddressMode::RegisterL, AddressMode::RegisterB>, // 68: ld l, b
+        &z80::ld<AddressMode::RegisterL, AddressMode::RegisterC>, // 69: ld l, c
+        &z80::ld<AddressMode::RegisterL, AddressMode::RegisterD>, // 6A: ld l, d
+        &z80::ld<AddressMode::RegisterL, AddressMode::RegisterE>, // 6B: ld l, e
+        &z80::ld<AddressMode::RegisterL, AddressMode::RegisterH>, // 6C: ld l, h
+        &z80::ld<AddressMode::RegisterL, AddressMode::RegisterL>, // 6D: ld l, l
+        &z80::ld<AddressMode::RegisterL, AddressMode::RegisterIndirectHL>, // 6E: ld l, (hl)
+        &z80::ld<AddressMode::RegisterL, AddressMode::Accumulator>, // 6F: ld l, a
+        &z80::ld<AddressMode::RegisterIndirectHL, AddressMode::RegisterB>, // $70: ld (hl), b
+        &z80::ld<AddressMode::RegisterIndirectHL, AddressMode::RegisterC>, // $71: ld (hl), c
+        &z80::ld<AddressMode::RegisterIndirectHL, AddressMode::RegisterD>, // $72: ld (hl), d
+        &z80::ld<AddressMode::RegisterIndirectHL, AddressMode::RegisterE>, // $73: ld (hl), e
+        &z80::ld<AddressMode::RegisterIndirectHL, AddressMode::RegisterH>, // $74: ld (hl), h
+        &z80::ld<AddressMode::RegisterIndirectHL, AddressMode::RegisterL>, // $75: ld (hl), l
+        &z80::halt, // $76: ld (hl), b
+        &z80::ld<AddressMode::RegisterIndirectHL, AddressMode::Accumulator>, // $77: ld (hl), a
+        &z80::ld<AddressMode::Accumulator, AddressMode::RegisterB>, // $78: ld a, b
+        &z80::ld<AddressMode::Accumulator, AddressMode::RegisterC>, // $79: ld a, c
+        &z80::ld<AddressMode::Accumulator, AddressMode::RegisterD>, // $7A: ld a, d
+        &z80::ld<AddressMode::Accumulator, AddressMode::RegisterE>, // $7B: ld a, e
+        &z80::ld<AddressMode::Accumulator, AddressMode::RegisterH>, // $7C: ld a, h
+        &z80::ld<AddressMode::Accumulator, AddressMode::RegisterL>, // $7D: ld a, l
+        &z80::ld<AddressMode::Accumulator, AddressMode::RegisterIndirectHL>, // $7E: ld a, (hl)
+        &z80::ld<AddressMode::Accumulator, AddressMode::Accumulator>, // $7F: ld a, a
+        &z80::add8<AddressMode::RegisterB>, // $80: add a, b
+        &z80::add8<AddressMode::RegisterC>, // $81: add a, c
+        &z80::add8<AddressMode::RegisterD>, // $82: add a, d
+        &z80::add8<AddressMode::RegisterE>, // $83: add a, e
+        &z80::add8<AddressMode::RegisterH>, // $84: add a, h
+        &z80::add8<AddressMode::RegisterL>, // $85: add a, l
+        &z80::add8<AddressMode::RegisterIndirectHL>, // $86: add a, (hl)
+        &z80::add8<AddressMode::Accumulator>, // $87: add a, a
+        &z80::adc8<AddressMode::RegisterB>, // $88: adc a, b
+        &z80::adc8<AddressMode::RegisterC>, // $89: adc a, c
+        &z80::adc8<AddressMode::RegisterD>, // $8A: adc a, d
+        &z80::adc8<AddressMode::RegisterE>, // $8B: adc a, e
+        &z80::adc8<AddressMode::RegisterH>, // $8C: adc a, h
+        &z80::adc8<AddressMode::RegisterL>, // $8D: adc a, l
+        &z80::adc8<AddressMode::RegisterIndirectHL>, // $8E: adc a, (hl)
+        &z80::adc8<AddressMode::Accumulator>, // $8F: adc a, a
+        &z80::sub<AddressMode::RegisterB>, // $90: sub b
+        &z80::sub<AddressMode::RegisterC>, // $91: sub c
+        &z80::sub<AddressMode::RegisterD>, // $92: sub d
+        &z80::sub<AddressMode::RegisterE>, // $93: sub e
+        &z80::sub<AddressMode::RegisterH>, // $94: sub h
+        &z80::sub<AddressMode::RegisterL>, // $95: sub l
+        &z80::sub<AddressMode::RegisterIndirectHL>, // $96: sub (hl)
+        &z80::sub<AddressMode::Accumulator>, // $97: sub a
+        &z80::sbc8<AddressMode::RegisterB>, // $98: sbc a, b
+        &z80::sbc8<AddressMode::RegisterC>, // $99: sbc a, c
+        &z80::sbc8<AddressMode::RegisterD>, // $9A: sbc a, d
+        &z80::sbc8<AddressMode::RegisterE>, // $9B: sbc a, e
+        &z80::sbc8<AddressMode::RegisterH>, // $9C: sbc a, h
+        &z80::sbc8<AddressMode::RegisterL>, // $9D: sbc a, l
+        &z80::sbc8<AddressMode::RegisterIndirectHL>, // $9E: sbc a, (hl)
+        &z80::sbc8<AddressMode::Accumulator>, // $AF: sbc a, a
+        &z80::land<AddressMode::RegisterB>, // $A0: and b
+        &z80::land<AddressMode::RegisterC>, // $A1: and c
+        &z80::land<AddressMode::RegisterD>, // $A2: and d
+        &z80::land<AddressMode::RegisterE>, // $A3: and e
+        &z80::land<AddressMode::RegisterH>, // $A4: and h
+        &z80::land<AddressMode::RegisterL>, // $A5: and l
+        &z80::land<AddressMode::RegisterIndirectHL>, // $A6: and (hl)
+        &z80::land<AddressMode::Accumulator>, // $A7: and a
+        &z80::lxor<AddressMode::RegisterB>, // $A8: xor b
+        &z80::lxor<AddressMode::RegisterC>, // $A9: xor c
+        &z80::lxor<AddressMode::RegisterD>, // $AA: xor d
+        &z80::lxor<AddressMode::RegisterE>, // $AB: xor e
+        &z80::lxor<AddressMode::RegisterH>, // $AC: xor h
+        &z80::lxor<AddressMode::RegisterL>, // $AD: xor l
+        &z80::lxor<AddressMode::RegisterIndirectHL>, // $AE: xor a, (hl)
+        &z80::lxor<AddressMode::Accumulator>, // $AF: xor a
+        &z80::lor<AddressMode::RegisterB>, // $B0: or b
+        &z80::lor<AddressMode::RegisterC>, // $B1: or c
+        &z80::lor<AddressMode::RegisterD>, // $B2: or d
+        &z80::lor<AddressMode::RegisterE>, // $B3: or e
+        &z80::lor<AddressMode::RegisterH>, // $B4: or h
+        &z80::lor<AddressMode::RegisterL>, // $B5: or l
+        &z80::lor<AddressMode::RegisterIndirectHL>, // $B6: or (hl)
+        &z80::lor<AddressMode::Accumulator>, // $B7: or a
+        &z80::cp<AddressMode::RegisterB>, // $B8: cp b
+        &z80::cp<AddressMode::RegisterC>, // $B9: cp c
+        &z80::cp<AddressMode::RegisterD>, // $BA: cp d
+        &z80::cp<AddressMode::RegisterE>, // $BB: cp e
+        &z80::cp<AddressMode::RegisterH>, // $BC: cp h
+        &z80::cp<AddressMode::RegisterL>, // $BD: cp l
+        &z80::cp<AddressMode::RegisterIndirectHL>, // $BE: cp (hl)
+        &z80::cp<AddressMode::Accumulator>, // $BF: cp a
+    };
+
+    static constexpr u8 cycles[256] {
+        4, 10, 7, 6, 4, 4, 7, 4, 4, 11, 7, 6, 4, 4, 7, 4,
+        8, 10, 7, 6, 4, 4, 7, 4, 12, 11, 7, 6, 4, 4, 7, 4,
+        7, 10, 16, 6, 4, 4, 7, 4, 7, 11, 16, 6, 4, 4, 7, 4,
+        7, 10, 13, 6, 11, 11, 10, 4, 7, 11, 13, 6, 4, 4, 7, 4,
+        4, 4, 4, 4, 4, 4, 7, 4, 4, 4, 4, 4, 4, 4, 7, 4,
+        4, 4, 4, 4, 4, 4, 7, 4, 4, 4, 4, 4, 4, 4, 7, 4,
+        4, 4, 4, 4, 4, 4, 7, 4, 4, 4, 4, 4, 4, 4, 7, 4,
+        7, 7, 7, 7, 7, 7, 4, 7, 4, 4, 4, 4, 4, 4, 7, 4,
+        4, 4, 4, 4, 4, 4, 7, 4, 4, 4, 4, 4, 4, 4, 7, 4,
+        4, 4, 4, 4, 4, 4, 7, 4, 4, 4, 4, 4, 4, 4, 7, 4,
+        4, 4, 4, 4, 4, 4, 7, 4, 4, 4, 4, 4, 4, 4, 7, 4,
+        4, 4, 4, 4, 4, 4, 7, 4, 4, 4, 4, 4, 4, 4, 7, 4,
+        5, 10, 10, 10, 10, 11, 7, 11, 5, 10, 10, 0, 10, 17, 7, 11,
+        5, 10, 10, 11, 10, 11, 7, 11, 5, 4, 10, 11, 10, 0, 7, 11,
+        5, 10, 10, 19, 10, 11, 7, 11, 5, 4, 10, 4, 10, 0, 7, 11,
+        5, 10, 10, 4, 10, 11, 7, 11, 5, 6, 10, 4, 10, 0, 7, 11
+    };
+
+    // Bit Instructions ($CB)
+    static constexpr std::array<void (z80::*)(), 256> bitInstruction {
+
+    };
+
+    static constexpr u8 bitCycles[256] {
+
+    };
+
+    // Misc. Instructions ($ED)
+    static constexpr std::array<void (z80::*)(), 256> miscInstruction {
+
+    };
+
+    static constexpr u8 miscCycles[256] {
+
+    };
+
+    // IX Instructions ($DD)
+    static constexpr std::array<void (z80::*)(), 256> ixInstruction {
+
+    };
+
+    static constexpr u8 ixCycles[256] {
+
+    };
+
+    // IX Bit instructions ($DDCB)
+    static constexpr std::array<void (z80::*)(), 256> ixBitInstruction {
+
+    };
+
+    static constexpr u8 ixBitCycles[256] {
+
+    };
+
+    // IY Instructions ($FD)
+    static constexpr std::array<void (z80::*)(), 256> iyInstruction {
+
+    };
+
+    static constexpr u8 iyCycles[256] {
+
+    };
+
+    // IY Bit instructions ($FDCB)
+    static constexpr std::array<void (z80::*)(), 256> iyBitInstruction {
+
+    };
+
+    static constexpr u8 iyBitCycles[256] {
+
+    };
+
+    bool iff {false}; // interrupt latch
+    int requested {};
+    Registers regs2 {};
+    Flags flags2 {};
+    Memory memory {};
 };
 
-int z80::step()
+template<typename Memory>
+int z80<Memory>::run(const int cycles)
 {
-    return 0;
+    requested = cycles;
+    while (requested > 0) { tick(); }
+    return requested;
+}
+
+template<typename Memory>
+void z80<Memory>::tick()
+{
+    u8 opcode {fetch8()};
+
+    if (opcode == 0xCB) {
+        opcode = fetch8();
+        (this->*bitInstruction[opcode])();
+        requested -= bitCycles[opcode];
+    } else if (opcode == 0xED) {
+        opcode = fetch8();
+        (this->*miscInstruction[opcode])();
+        requested -= miscCycles[opcode];
+    } else if (opcode == 0xDD) {
+        opcode = fetch8();
+        if (opcode == 0xCB) {
+            opcode = fetch8();
+            (this->*ixBitInstruction[opcode])();
+            requested -= ixBitCycles[opcode];
+        } else {
+            (this->*ixBitInstruction[opcode])();
+            requested -= ixCycles[opcode];
+        }
+    } else if (opcode == 0xFD) {
+        opcode = fetch8();
+        if (opcode == 0xCB) {
+            opcode = fetch8();
+            (this->*iyBitInstruction[opcode])();
+            requested -= iyBitCycles[opcode];
+        } else {
+            (this->*iyInstruction[opcode])();
+            requested -= iyCycles[opcode];
+        }
+    } else {
+        (this->*instruction[opcode])();
+        requested -= cycles[opcode];
+    }
 }
 
 #endif //Z80_LIBRARY_H
