@@ -12,7 +12,8 @@ include(GNUInstallDirs)
 
 option(TEST_Z80 "Enable/Disable testing" ${PROJECT_IS_TOP_LEVEL})
 
-add_library(${PROJECT_NAME} INTERFACE)
+add_library(${PROJECT_NAME} INTERFACE
+        include/z80.h)
 
 target_include_directories(
         ${PROJECT_NAME}
