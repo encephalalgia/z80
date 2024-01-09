@@ -8,13 +8,20 @@ protected:
             0x04
         };
 
-        u8 read8(u16 addr) { return ram[addr]; }
-        u16 read16(u16 addr) { return ram[addr] << 8 | ram[addr + 1]; }
-        void write(u16 addr, u8 val) { ram[addr] = val; }
-        void write(u16 addr, u16 val) { ram[addr] = val >> 8; ram[addr + 1] = val & 0xFF; }
+        [[nodiscard]] u8 read8(const u16 addr) const { return ram[addr]; }
+        [[nodiscard]] u16 read16(const u16 addr) const { return ram[addr] << 8 | ram[addr + 1]; }
+        void write(const u16 addr, const u8 val) { ram[addr] = val; }
+        void write(const u16 addr, const u16 val) { ram[addr] = val >> 8; ram[addr + 1] = val & 0xFF; }
     };
 
-    z80<memory> z80_ {};
+    struct io {
+        u8 port[256] {};
+
+        [[nodiscard]] u8 input(const u8 addr) const { return port[addr]; }
+        void output(const u8 addr, const u8 val) { port[addr] = val; }
+    };
+
+    z80<memory, io> z80_ {};
 };
 
 TEST_F(z80Test, jsmooUnitTests)
