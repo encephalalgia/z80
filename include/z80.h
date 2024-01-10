@@ -25,7 +25,21 @@ public:
      * \return
      */
     int run(int cycles);
-    void interrupt();
+
+    /**
+     * \brief
+     */
+    void reset();
+
+    /**
+     * \brief
+     */
+    void reqNmi();
+
+    /**
+     * \brief
+     */
+    void reqInt(const u8);
 
     /**
      * \brief
@@ -96,6 +110,102 @@ private:
     static constexpr u8 pbit {0b00000100}; // bit 2: parity flag
     static constexpr u8 nbit {0b00000010}; // bit 1: add/subtract flag
     static constexpr u8 cbit {0b00000001}; // bit 0: carry flag
+
+    // Cycle Tables
+    static constexpr u8 cycles[256] {
+        4, 10, 7, 6, 4, 4, 7, 4, 4, 11, 7, 6, 4, 4, 7, 4,
+        8, 10, 7, 6, 4, 4, 7, 4, 12, 11, 7, 6, 4, 4, 7, 4,
+        7, 10, 16, 6, 4, 4, 7, 4, 7, 11, 16, 6, 4, 4, 7, 4,
+        7, 10, 13, 6, 11, 11, 10, 4, 7, 11, 13, 6, 4, 4, 7, 4,
+        4, 4, 4, 4, 4, 4, 7, 4, 4, 4, 4, 4, 4, 4, 7, 4,
+        4, 4, 4, 4, 4, 4, 7, 4, 4, 4, 4, 4, 4, 4, 7, 4,
+        4, 4, 4, 4, 4, 4, 7, 4, 4, 4, 4, 4, 4, 4, 7, 4,
+        7, 7, 7, 7, 7, 7, 4, 7, 4, 4, 4, 4, 4, 4, 7, 4,
+        4, 4, 4, 4, 4, 4, 7, 4, 4, 4, 4, 4, 4, 4, 7, 4,
+        4, 4, 4, 4, 4, 4, 7, 4, 4, 4, 4, 4, 4, 4, 7, 4,
+        4, 4, 4, 4, 4, 4, 7, 4, 4, 4, 4, 4, 4, 4, 7, 4,
+        4, 4, 4, 4, 4, 4, 7, 4, 4, 4, 4, 4, 4, 4, 7, 4,
+        5, 10, 10, 10, 10, 11, 7, 11, 5, 10, 10, 0, 10, 17, 7, 11,
+        5, 10, 10, 11, 10, 11, 7, 11, 5, 4, 10, 11, 10, 0, 7, 11,
+        5, 10, 10, 19, 10, 11, 7, 11, 5, 4, 10, 4, 10, 0, 7, 11,
+        5, 10, 10, 4, 10, 11, 7, 11, 5, 6, 10, 4, 10, 0, 7, 11,
+    };
+
+    static constexpr u8 bitCycles[256] {
+        8, 8, 8, 8, 8, 8, 15, 8, 8, 8, 8, 8, 8, 8, 15, 8,
+        8, 8, 8, 8, 8, 8, 15, 8, 8, 8, 8, 8, 8, 8, 15, 8,
+        8, 8, 8, 8, 8, 8, 15, 8, 8, 8, 8, 8, 8, 8, 15, 8,
+        8, 8, 8, 8, 8, 8, 15, 8, 8, 8, 8, 8, 8, 8, 15, 8,
+        8, 8, 8, 8, 8, 8, 12, 8, 8, 8, 8, 8, 8, 8, 12, 8,
+        8, 8, 8, 8, 8, 8, 12, 8, 8, 8, 8, 8, 8, 8, 12, 8,
+        8, 8, 8, 8, 8, 8, 12, 8, 8, 8, 8, 8, 8, 8, 12, 8,
+        8, 8, 8, 8, 8, 8, 12, 8, 8, 8, 8, 8, 8, 8, 12, 8,
+        8, 8, 8, 8, 8, 8, 15, 8, 8, 8, 8, 8, 8, 8, 15, 8,
+        8, 8, 8, 8, 8, 8, 15, 8, 8, 8, 8, 8, 8, 8, 15, 8,
+        8, 8, 8, 8, 8, 8, 15, 8, 8, 8, 8, 8, 8, 8, 15, 8,
+        8, 8, 8, 8, 8, 8, 15, 8, 8, 8, 8, 8, 8, 8, 15, 8,
+        8, 8, 8, 8, 8, 8, 15, 8, 8, 8, 8, 8, 8, 8, 15, 8,
+        8, 8, 8, 8, 8, 8, 15, 8, 8, 8, 8, 8, 8, 8, 15, 8,
+        8, 8, 8, 8, 8, 8, 15, 8, 8, 8, 8, 8, 8, 8, 15, 8,
+        8, 8, 8, 8, 8, 8, 15, 8, 8, 8, 8, 8, 8, 8, 15, 8,
+    };
+
+    static constexpr u8 miscCycles[256] {
+        4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4,
+        4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4,
+        4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4,
+        4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4,
+        12, 12, 15, 20, 8, 14, 8, 9, 12, 12, 15, 20, 4, 14, 4, 9,
+        12, 12, 15, 20, 4, 4, 8, 9, 12, 12, 15, 20, 4, 4, 8, 9,
+        12, 12, 15, 20, 4, 4, 4, 18, 12, 12, 15, 20, 4, 4, 4, 18,
+        12, 12, 15, 20, 4, 4, 4, 4, 12, 12, 15, 20, 4, 4, 4, 4,
+        4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4,
+        4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4,
+        16, 16, 16, 16, 4, 4, 4, 4, 16, 16, 16, 16, 4, 4, 4, 4,
+        16, 16, 16, 16, 4, 4, 4, 4, 16, 16, 16, 16, 4, 4, 4, 4,
+        4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4,
+        4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4,
+        4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4,
+        4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4,
+    };
+
+    static constexpr u8 indexCycles[256] {
+        4, 4, 4, 4, 8, 8, 11, 4, 4, 15, 4, 4, 8, 8, 11, 4,
+        4, 4, 4, 4, 8, 8, 11, 4, 4, 15, 4, 4, 8, 8, 11, 4,
+        4, 14, 10, 20, 8, 8, 11, 4, 4, 15, 20, 10, 8, 8, 11, 4,
+        4, 4, 4, 4, 23, 23, 19, 4, 4, 15, 4, 4, 8, 8, 11, 4,
+        8, 8, 8, 8, 8, 8, 19, 8, 8, 8, 8, 8, 8, 8, 19, 8,
+        8, 8, 8, 8, 8, 8, 19, 8, 8, 8, 8, 8, 8, 8, 19, 8,
+        8, 8, 8, 8, 8, 8, 19, 8, 8, 8, 8, 8, 8, 8, 19, 8,
+        19, 19, 19, 19, 19, 19, 4, 19, 8, 8, 8, 8, 8, 8, 19, 8,
+        8, 8, 8, 8, 8, 8, 19, 8, 8, 8, 8, 8, 8, 8, 19, 8,
+        8, 8, 8, 8, 8, 8, 19, 8, 8, 8, 8, 8, 8, 8, 19, 8,
+        8, 8, 8, 8, 8, 8, 19, 8, 8, 8, 8, 8, 8, 8, 19, 8,
+        8, 8, 8, 8, 8, 8, 19, 8, 8, 8, 8, 8, 8, 8, 19, 8,
+        4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 0, 4, 4, 4, 4,
+        4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4,
+        4, 14, 4, 23, 4, 15, 4, 4, 4, 8, 4, 4, 4, 4, 4, 4,
+        4, 4, 4, 4, 4, 4, 4, 4, 4, 10, 4, 4, 4, 4, 4, 4,
+    };
+
+    static constexpr u8 indexBitCycles[256] {
+        23, 23, 23, 23, 23, 23, 23, 23, 23, 23, 23, 23, 23, 23, 23, 23,
+        23, 23, 23, 23, 23, 23, 23, 23, 23, 23, 23, 23, 23, 23, 23, 23,
+        23, 23, 23, 23, 23, 23, 23, 23, 23, 23, 23, 23, 23, 23, 23, 23,
+        23, 23, 23, 23, 23, 23, 23, 23, 23, 23, 23, 23, 23, 23, 23, 23,
+        20, 20, 20, 20, 20, 20, 20, 20, 20, 20, 20, 20, 20, 20, 20, 20,
+        20, 20, 20, 20, 20, 20, 20, 20, 20, 20, 20, 20, 20, 20, 20, 20,
+        20, 20, 20, 20, 20, 20, 20, 20, 20, 20, 20, 20, 20, 20, 20, 20,
+        20, 20, 20, 20, 20, 20, 20, 20, 20, 20, 20, 20, 20, 20, 20, 20,
+        23, 23, 23, 23, 23, 23, 23, 23, 23, 23, 23, 23, 23, 23, 23, 23,
+        23, 23, 23, 23, 23, 23, 23, 23, 23, 23, 23, 23, 23, 23, 23, 23,
+        23, 23, 23, 23, 23, 23, 23, 23, 23, 23, 23, 23, 23, 23, 23, 23,
+        23, 23, 23, 23, 23, 23, 23, 23, 23, 23, 23, 23, 23, 23, 23, 23,
+        23, 23, 23, 23, 23, 23, 23, 23, 23, 23, 23, 23, 23, 23, 23, 23,
+        23, 23, 23, 23, 23, 23, 23, 23, 23, 23, 23, 23, 23, 23, 23, 23,
+        23, 23, 23, 23, 23, 23, 23, 23, 23, 23, 23, 23, 23, 23, 23, 23,
+        23, 23, 23, 23, 23, 23, 23, 23, 23, 23, 23, 23, 23, 23, 23, 23,
+    };
 
     enum class AddressMode {
         Null,
@@ -333,6 +443,17 @@ private:
     // Load and Exchange
     template<AddressMode mode1, AddressMode mode2>
     void ld() { setOperand<mode1>(getOperand<mode2>()); }
+
+    template<AddressMode mode>
+    void lda()
+    {
+
+        a = getOperand<mode>();
+        flags.hf = 0;
+        flags.nf = 0;
+        flags.pf = iff2;
+        commonFlags(a);
+    }
 
     template<AddressMode mode>
     void push()
@@ -792,6 +913,22 @@ private:
     template<u8 mask, AddressMode mode>
     void set() { setOperand<mode>(getOperand<mode>() | mask); }
 
+    template<u8 mask, AddressMode mode1, AddressMode mode2>
+    void res()
+    {
+        const u8 val {static_cast<u8>(getOperand<mode1>() & mask)};
+        setOperand<mode1>(val);
+        setOperand<mode2>(val);
+    }
+
+    template<u8 mask, AddressMode mode1, AddressMode mode2>
+    void set()
+    {
+        const u8 val {static_cast<u8>(getOperand<mode1>() | mask)};
+        setOperand<mode1>(val);
+        setOperand<mode2>(val);
+    }
+
     // Jump, Call, and Return
     template<Condition cond>
     void jr()
@@ -906,9 +1043,9 @@ private:
 
     // CPU Control Group
     void nop() { }
-    void halt() { } // TODO: implement this
-    void di() { iff1 = false; }
-    void ei() { iff1 = true; }
+    void halt() { halted = true; }
+    void di() { iff1 = iff2 = false; }
+    void ei() { iff1 = iff2 = true; }
     template<u8 n>
     void im() { imode = n; }
 
@@ -927,11 +1064,11 @@ private:
         requested -= bitCycles[opcode];
     }
 
-    template<AddressMode mode>
+    template<AddressMode mode, AddressMode modeH, AddressMode modeL, AddressMode modeD>
     void preIndex()
     {
         const u8 opcode {fetch8()};
-        (this->*indexInstruction<mode>[opcode])();
+        (this->*indexInstruction<mode, modeH, modeL, modeD>[opcode])();
         requested -= indexCycles[opcode];
     }
 
@@ -943,7 +1080,7 @@ private:
         requested -= indexBitCycles[opcode];
     }
 
-    // Main Instructions
+    // Primary Instructions
     static constexpr std::array<void (z80::*)(), 256> instruction {
         &z80::nop, // $00: nop
         &z80::ld<AddressMode::RegisterBC, AddressMode::ImmediateEx>, // $01: ld bc, nn
@@ -1063,7 +1200,7 @@ private:
         &z80::ld<AddressMode::RegisterIndirectHL, AddressMode::RegisterE>, // $73: ld (hl), e
         &z80::ld<AddressMode::RegisterIndirectHL, AddressMode::RegisterH>, // $74: ld (hl), h
         &z80::ld<AddressMode::RegisterIndirectHL, AddressMode::RegisterL>, // $75: ld (hl), l
-        &z80::halt, // $76: ld (hl), b
+        &z80::halt, // $76: halt
         &z80::ld<AddressMode::RegisterIndirectHL, AddressMode::Accumulator>, // $77: ld (hl), a
         &z80::ld<AddressMode::Accumulator, AddressMode::RegisterB>, // $78: ld a, b
         &z80::ld<AddressMode::Accumulator, AddressMode::RegisterC>, // $79: ld a, c
@@ -1166,7 +1303,7 @@ private:
         &z80::jp<Condition::C, AddressMode::ImmediateEx>, // $DA: jp c, nn
         &z80::in, // $DB: int a, (n)
         &z80::call<Condition::C, AddressMode::ImmediateEx>, // $DC: call c, nn
-        &z80::preIndex<AddressMode::RegisterIX>, // $DD: IX
+        &z80::preIndex<AddressMode::RegisterIX, AddressMode::RegisterIXH, AddressMode::RegisterIXL, AddressMode::IndexedIX>, // $DD: IX
         &z80::sbc8<AddressMode::Immediate>, // $DE: sbc a, n
         &z80::rst<0x18U>, // $DF: rst 24
         &z80::ret<Condition::PO>, // $E0: ret po
@@ -1198,7 +1335,7 @@ private:
         &z80::jp<Condition::M, AddressMode::ImmediateEx>, // $FA: jp m, nn
         &z80::ei, // $FB: ei
         &z80::call<Condition::M, AddressMode::ImmediateEx>, // $FC: call m, nn
-        &z80::preIndex<AddressMode::RegisterIY>, // $FD: IY
+        &z80::preIndex<AddressMode::RegisterIY, AddressMode::RegisterIYH, AddressMode::RegisterIYL, AddressMode::IndexedIY>, // $FD: IY
         &z80::cp<AddressMode::Immediate>, // $FE: cp n
         &z80::rst<0x38U>,// $FF: rst 56
     };
@@ -1231,14 +1368,14 @@ private:
         &z80::ld<AddressMode::ImmediateEx, AddressMode::RegisterDE>, // $53: ld (nn), de
         &z80::nop, &z80::nop,
         &z80::im<1U>, // $56: im 1
-        &z80::ld<AddressMode::Accumulator, AddressMode::Interrupt>, // $57: ld a, i
+        &z80::lda<AddressMode::Interrupt>, // $57: ld a, i
         &z80::in<AddressMode::RegisterE>, // $58: in e, (c)
         &z80::out<AddressMode::RegisterE>, // $59: out (c), e
         &z80::adc16<AddressMode::RegisterHL, AddressMode::RegisterDE>, // $5A: adc hl, de
         &z80::ld<AddressMode::RegisterDE, AddressMode::Extended>, // $5B: ld de, (nn)
         &z80::nop, &z80::nop,
         &z80::im<2U>, // // $4E: im 2
-        &z80::ld<AddressMode::Accumulator, AddressMode::Refresh>, // $4F: ld a, r
+        &z80::lda<AddressMode::Refresh>, // $4F: ld a, r
         &z80::in<AddressMode::RegisterH>, // $60: in h, (c)
         &z80::out<AddressMode::RegisterH>, // $61: out (c), h
         &z80::sbc16<AddressMode::RegisterHL, AddressMode::RegisterHL>, // $62: sbc hl, hl
@@ -1550,115 +1687,464 @@ private:
     };
 
     // Index Instructions ($DD/$FD)
-    template<AddressMode mode>
+    template<AddressMode mode, AddressMode modeH, AddressMode modeL, AddressMode modeD>
     static constexpr std::array<void (z80::*)(), 256> indexInstruction {
-
+        &z80::nop, &z80::nop, &z80::nop, &z80::nop,
+        &z80::inc8<AddressMode::RegisterB>, // $04: inc b
+        &z80::dec8<AddressMode::RegisterB>, // $05: dec b
+        &z80::ld<AddressMode::RegisterB, AddressMode::Immediate>, // $06: ld b, n
+        &z80::nop, &z80::nop,
+        &z80::add16<mode, AddressMode::RegisterBC>, // $09: add ix/iy, bc
+        &z80::nop, &z80::nop,
+        &z80::inc8<AddressMode::RegisterC>, // $0C: inc c
+        &z80::dec8<AddressMode::RegisterC>, // $0D: dec c
+        &z80::ld<AddressMode::RegisterC, AddressMode::Immediate>, // $0E: ld c, n
+        &z80::nop,
+        &z80::nop, &z80::nop, &z80::nop, &z80::nop,
+        &z80::inc8<AddressMode::RegisterD>, // $14: inc d
+        &z80::dec8<AddressMode::RegisterD>, // $15: dec d
+        &z80::ld<AddressMode::RegisterD, AddressMode::Immediate>, // $16: ld d, n
+        &z80::nop, &z80::nop,
+        &z80::add16<mode, AddressMode::RegisterDE>, // $19: add ix/iy, de
+        &z80::nop, &z80::nop,
+        &z80::inc8<AddressMode::RegisterE>, // $1C: inc e
+        &z80::dec8<AddressMode::RegisterE>, // $1D: dec e
+        &z80::ld<AddressMode::RegisterE, AddressMode::Immediate>, // $1E: ld e, n
+        &z80::nop, &z80::nop,
+        &z80::ld<mode, AddressMode::ImmediateEx>, // $21: ld ix/iy, nn
+        &z80::ld<AddressMode::Extended, mode>, // $22: ld (nn), ix/iy
+        &z80::inc16<mode>, // $23: inc ix/iy
+        &z80::inc8<modeH>, // $24: inc ixh/iyh
+        &z80::dec8<modeH>, // $25: dec ixh/iyh
+        &z80::ld<modeH, AddressMode::Immediate>, // $26: ld ixh/iyh, n
+        &z80::nop, &z80::nop,
+        &z80::add16<mode, mode>, // $29: add ix/iy, ix/iy
+        &z80::ld<mode, AddressMode::Extended>, // $2A: ld ix/iy, (nn)
+        &z80::dec16<mode>, // $2B: dec ix/iy
+        &z80::inc8<modeL>, // $2C: inc ixl/iyl
+        &z80::dec8<modeL>, // $2D: dec ixl/iyl
+        &z80::ld<modeL, AddressMode::Immediate>, // $2E: ld ixl/iyl, n
+        &z80::nop, &z80::nop, &z80::nop, &z80::nop, &z80::nop,
+        &z80::inc8<modeD>, // $34: inc (ix+d/iy+d)
+        &z80::dec8<modeD>, // $35: dec (ix+d/iy+d)
+        &z80::ld<modeD, AddressMode::Immediate>, // $36: ld (ix+d/iy+d), n
+        &z80::nop, &z80::nop,
+        &z80::add16<mode, AddressMode::RegisterSP>, // $39: add ix/iy, sp
+        &z80::nop, &z80::nop,
+        &z80::inc8<AddressMode::Accumulator>, // $3C: inc a
+        &z80::dec8<AddressMode::Accumulator>, // $3D: dec a
+        &z80::ld<AddressMode::Accumulator, AddressMode::Immediate>, // $3E: ld a, n
+        &z80::nop,
+        &z80::ld<AddressMode::RegisterB, AddressMode::RegisterB>, // 40: ld b, b
+        &z80::ld<AddressMode::RegisterB, AddressMode::RegisterC>, // 41: ld b, c
+        &z80::ld<AddressMode::RegisterB, AddressMode::RegisterD>, // 42: ld b, d
+        &z80::ld<AddressMode::RegisterB, AddressMode::RegisterE>, // 43: ld b, e
+        &z80::ld<AddressMode::RegisterB, modeH>, // 44: ld b, ixh/iyh
+        &z80::ld<AddressMode::RegisterB, modeL>, // 45: ld b, ixl/iyl
+        &z80::ld<AddressMode::RegisterB, modeD>, // 46: ld b, (ix+d/iy+d)
+        &z80::ld<AddressMode::RegisterB, AddressMode::Accumulator>, // 47: ld c, a
+        &z80::ld<AddressMode::RegisterC, AddressMode::RegisterB>, // 48: ld c, b
+        &z80::ld<AddressMode::RegisterC, AddressMode::RegisterC>, // 49: ld c, c
+        &z80::ld<AddressMode::RegisterC, AddressMode::RegisterD>, // 4A: ld c, d
+        &z80::ld<AddressMode::RegisterC, AddressMode::RegisterE>, // 4B: ld c, e
+        &z80::ld<AddressMode::RegisterC, modeH>, // 4C: ld c, ixh/iyh
+        &z80::ld<AddressMode::RegisterC, modeL>, // 4D: ld c, ixl/iyl
+        &z80::ld<AddressMode::RegisterC, modeD>, // 4E: ld c, (ix+d/iy+d)
+        &z80::ld<AddressMode::RegisterC, AddressMode::Accumulator>, // 4F: ld c, a
+        &z80::ld<AddressMode::RegisterD, AddressMode::RegisterB>, // 50: ld d, b
+        &z80::ld<AddressMode::RegisterD, AddressMode::RegisterC>, // 51: ld d, c
+        &z80::ld<AddressMode::RegisterD, AddressMode::RegisterD>, // 52: ld d, d
+        &z80::ld<AddressMode::RegisterD, AddressMode::RegisterE>, // 53: ld d, e
+        &z80::ld<AddressMode::RegisterD, modeH>, // 54: ld d, ixh/iyh
+        &z80::ld<AddressMode::RegisterD, modeL>, // 55: ld d, ixl/iyl
+        &z80::ld<AddressMode::RegisterD, modeD>, // 56: ld d, (ix+d/iy+d)
+        &z80::ld<AddressMode::RegisterD, AddressMode::Accumulator>, // 57: ld d, a
+        &z80::ld<AddressMode::RegisterE, AddressMode::RegisterB>, // 58: ld e, b
+        &z80::ld<AddressMode::RegisterE, AddressMode::RegisterC>, // 59: ld e, c
+        &z80::ld<AddressMode::RegisterE, AddressMode::RegisterD>, // 5A: ld e, d
+        &z80::ld<AddressMode::RegisterE, AddressMode::RegisterE>, // 5B: ld e, e
+        &z80::ld<AddressMode::RegisterE, modeH>, // 5C: ld e, ixh/iyh
+        &z80::ld<AddressMode::RegisterE, modeL>, // 5D: ld e, ixl/iyl
+        &z80::ld<AddressMode::RegisterE, modeD>, // 5E: ld e, (ix+d/iy+d)
+        &z80::ld<AddressMode::RegisterE, AddressMode::Accumulator>, // 5F: ld e, a
+        &z80::ld<modeH, AddressMode::RegisterB>, // 60: ld ixh/iyh, b
+        &z80::ld<modeH, AddressMode::RegisterC>, // 61: ld ixh/iyh, c
+        &z80::ld<modeH, AddressMode::RegisterD>, // 62: ld ixh/iyh, d
+        &z80::ld<modeH, AddressMode::RegisterE>, // 63: ld ixh/iyh, e
+        &z80::ld<modeH, modeH>, // 64: ld ixh/iyh, ixh/iyh
+        &z80::ld<modeH, modeL>, // 65: ld ixh/iyh, ixl/iyl
+        &z80::ld<AddressMode::RegisterH, modeD>, // 66: ld h, (ix+d/iy+d)
+        &z80::ld<modeH, AddressMode::Accumulator>, // 67: ld ixh/iyh, a
+        &z80::ld<modeL, AddressMode::RegisterB>, // 68: ld ixl/iyl, b
+        &z80::ld<modeL, AddressMode::RegisterC>, // 69: ld ixl/iyl, c
+        &z80::ld<modeL, AddressMode::RegisterD>, // 6A: ld ixl/iyl, d
+        &z80::ld<modeL, AddressMode::RegisterE>, // 6B: ld ixl/iyl, e
+        &z80::ld<modeL, modeH>, // 6C: ld ixl/iyl, ixh/iyh
+        &z80::ld<modeL, modeL>, // 6D: ld ixl/iyl, ixl/iyl
+        &z80::ld<modeL, modeD>, // 6E: ld l, (ix+d/iy+d)
+        &z80::ld<modeL, AddressMode::Accumulator>, // 6F: ld l, a
+        &z80::ld<modeD, AddressMode::RegisterB>, // $70: ld (hl), b
+        &z80::ld<modeD, AddressMode::RegisterC>, // $71: ld (hl), c
+        &z80::ld<modeD, AddressMode::RegisterD>, // $72: ld (hl), d
+        &z80::ld<modeD, AddressMode::RegisterE>, // $73: ld (hl), e
+        &z80::ld<modeD, AddressMode::RegisterH>, // $74: ld (hl), ixh/iyh
+        &z80::ld<modeD, modeL>, // $75: ld (hl), ixl/iyl
+        &z80::nop,
+        &z80::ld<modeD, AddressMode::Accumulator>, // $77: ld (hl), a
+        &z80::ld<AddressMode::Accumulator, AddressMode::RegisterB>, // $78: ld a, b
+        &z80::ld<AddressMode::Accumulator, AddressMode::RegisterC>, // $79: ld a, c
+        &z80::ld<AddressMode::Accumulator, AddressMode::RegisterD>, // $7A: ld a, d
+        &z80::ld<AddressMode::Accumulator, AddressMode::RegisterE>, // $7B: ld a, e
+        &z80::ld<AddressMode::Accumulator, modeH>, // $7C: ld a, ixh/iyh
+        &z80::ld<AddressMode::Accumulator, modeL>, // $7D: ld a, ixl/iyl
+        &z80::ld<AddressMode::Accumulator, modeD>, // $7E: ld a, (ix+d/iy+d)
+        &z80::ld<AddressMode::Accumulator, AddressMode::Accumulator>, // $7F: ld a, a
+        &z80::add8<AddressMode::RegisterB>, // $80: add a, b
+        &z80::add8<AddressMode::RegisterC>, // $81: add a, c
+        &z80::add8<AddressMode::RegisterD>, // $82: add a, d
+        &z80::add8<AddressMode::RegisterE>, // $83: add a, e
+        &z80::add8<modeH>, // $84: add a, ixh/iyh
+        &z80::add8<modeL>, // $85: add a, ixl/iyl
+        &z80::add8<modeD>, // $86: add a, (ix+d/iy+d)
+        &z80::add8<AddressMode::Accumulator>, // $87: add a, a
+        &z80::adc8<AddressMode::RegisterB>, // $88: adc a, b
+        &z80::adc8<AddressMode::RegisterC>, // $89: adc a, c
+        &z80::adc8<AddressMode::RegisterD>, // $8A: adc a, d
+        &z80::adc8<AddressMode::RegisterE>, // $8B: adc a, e
+        &z80::adc8<modeH>, // $8C: adc a, ixh/iyh
+        &z80::adc8<modeL>, // $8D: adc a, ixl/iyl
+        &z80::adc8<modeD>, // $8E: adc a, (ix+d/iy+d)
+        &z80::adc8<AddressMode::Accumulator>, // $8F: adc a, a
+        &z80::sub<AddressMode::RegisterB>, // $90: sub b
+        &z80::sub<AddressMode::RegisterC>, // $91: sub c
+        &z80::sub<AddressMode::RegisterD>, // $92: sub d
+        &z80::sub<AddressMode::RegisterE>, // $93: sub e
+        &z80::sub<modeH>, // $94: sub ixh/iyh
+        &z80::sub<modeL>, // $95: sub ixl/iyl
+        &z80::sub<modeD>, // $96: sub (ix+d/iy+d)
+        &z80::sub<AddressMode::Accumulator>, // $97: sub a
+        &z80::sbc8<AddressMode::RegisterB>, // $98: sbc a, b
+        &z80::sbc8<AddressMode::RegisterC>, // $99: sbc a, c
+        &z80::sbc8<AddressMode::RegisterD>, // $9A: sbc a, d
+        &z80::sbc8<AddressMode::RegisterE>, // $9B: sbc a, e
+        &z80::sbc8<modeH>, // $9C: sbc a, ixh/iyh
+        &z80::sbc8<modeL>, // $9D: sbc a, ixl/iyl
+        &z80::sbc8<modeD>, // $9E: sbc a, (ix+d/iy+d)
+        &z80::sbc8<AddressMode::Accumulator>, // $AF: sbc a, a
+        &z80::land<AddressMode::RegisterB>, // $A0: and b
+        &z80::land<AddressMode::RegisterC>, // $A1: and c
+        &z80::land<AddressMode::RegisterD>, // $A2: and d
+        &z80::land<AddressMode::RegisterE>, // $A3: and e
+        &z80::land<modeH>, // $A4: and ixh/iyh
+        &z80::land<modeL>, // $A5: and ixl/iyl
+        &z80::land<modeD>, // $A6: and (ix+d/iy+d)
+        &z80::land<AddressMode::Accumulator>, // $A7: and a
+        &z80::lxor<AddressMode::RegisterB>, // $A8: xor b
+        &z80::lxor<AddressMode::RegisterC>, // $A9: xor c
+        &z80::lxor<AddressMode::RegisterD>, // $AA: xor d
+        &z80::lxor<AddressMode::RegisterE>, // $AB: xor e
+        &z80::lxor<modeH>, // $AC: xor ixh/iyh
+        &z80::lxor<modeL>, // $AD: xor ixl/iyl
+        &z80::lxor<modeD>, // $AE: xor a, (ix+d/iy+d)
+        &z80::lxor<AddressMode::Accumulator>, // $AF: xor a
+        &z80::lor<AddressMode::RegisterB>, // $B0: or b
+        &z80::lor<AddressMode::RegisterC>, // $B1: or c
+        &z80::lor<AddressMode::RegisterD>, // $B2: or d
+        &z80::lor<AddressMode::RegisterE>, // $B3: or e
+        &z80::lor<modeH>, // $B4: or ixh/iyh
+        &z80::lor<modeL>, // $B5: or ixl/iyl
+        &z80::lor<modeD>, // $B6: or (ix+d/iy+d)
+        &z80::lor<AddressMode::Accumulator>, // $B7: or a
+        &z80::cp<AddressMode::RegisterB>, // $B8: cp b
+        &z80::cp<AddressMode::RegisterC>, // $B9: cp c
+        &z80::cp<AddressMode::RegisterD>, // $BA: cp d
+        &z80::cp<AddressMode::RegisterE>, // $BB: cp e
+        &z80::cp<modeH>, // $BC: cp ixh/iyh
+        &z80::cp<modeL>, // $BD: cp ixl/iyl
+        &z80::cp<modeD>, // $BE: cp (ix+d/iy+d)
+        &z80::cp<AddressMode::Accumulator>, // $BF: cp a
+        &z80::nop, &z80::nop, &z80::nop, &z80::nop, &z80::nop, &z80::nop, &z80::nop, &z80::nop, &z80::nop, &z80::nop, &z80::nop,
+        &z80::preIndexBit<modeD>, // $CB: index bit
+        &z80::nop, &z80::nop, &z80::nop, &z80::nop, &z80::nop, &z80::nop, &z80::nop, &z80::nop, &z80::nop, &z80::nop, &z80::nop, &z80::nop, &z80::nop, &z80::nop, &z80::nop, &z80::nop,
+        &z80::nop,
+        &z80::pop<mode>, // $E1: pop ix/iy
+        &z80::nop,
+        &z80::exsp<mode>, // $E3: ex (sp), ix/iy
+        &z80::nop,
+        &z80::push<mode>, // $E5: push ix/iy
+        &z80::nop, &z80::nop, &z80::nop,
+        &z80::jp<Condition::Null, modeD>, // $E9: jp (ix+d/iy+d)
+        &z80::nop, &z80::nop, &z80::nop, &z80::nop, &z80::nop, &z80::nop,
+        &z80::nop, &z80::nop, &z80::nop, &z80::nop, &z80::nop, &z80::nop, &z80::nop, &z80::nop, &z80::nop,
+        &z80::ld<AddressMode::RegisterSP, mode>, // $F9: ld sp, ix/iy
+        &z80::nop, &z80::nop, &z80::nop, &z80::nop, &z80::nop, &z80::nop,
     };
 
     // Index Bit instructions ($DDCB/$FDCB)
     template<AddressMode mode>
     static constexpr std::array<void (z80::*)(), 256> indexBitInstruction {
-
-    };
-
-    // Cycle Tables
-    static constexpr u8 cycles[256] {
-        4, 10, 7, 6, 4, 4, 7, 4, 4, 11, 7, 6, 4, 4, 7, 4,
-        8, 10, 7, 6, 4, 4, 7, 4, 12, 11, 7, 6, 4, 4, 7, 4,
-        7, 10, 16, 6, 4, 4, 7, 4, 7, 11, 16, 6, 4, 4, 7, 4,
-        7, 10, 13, 6, 11, 11, 10, 4, 7, 11, 13, 6, 4, 4, 7, 4,
-        4, 4, 4, 4, 4, 4, 7, 4, 4, 4, 4, 4, 4, 4, 7, 4,
-        4, 4, 4, 4, 4, 4, 7, 4, 4, 4, 4, 4, 4, 4, 7, 4,
-        4, 4, 4, 4, 4, 4, 7, 4, 4, 4, 4, 4, 4, 4, 7, 4,
-        7, 7, 7, 7, 7, 7, 4, 7, 4, 4, 4, 4, 4, 4, 7, 4,
-        4, 4, 4, 4, 4, 4, 7, 4, 4, 4, 4, 4, 4, 4, 7, 4,
-        4, 4, 4, 4, 4, 4, 7, 4, 4, 4, 4, 4, 4, 4, 7, 4,
-        4, 4, 4, 4, 4, 4, 7, 4, 4, 4, 4, 4, 4, 4, 7, 4,
-        4, 4, 4, 4, 4, 4, 7, 4, 4, 4, 4, 4, 4, 4, 7, 4,
-        5, 10, 10, 10, 10, 11, 7, 11, 5, 10, 10, 0, 10, 17, 7, 11,
-        5, 10, 10, 11, 10, 11, 7, 11, 5, 4, 10, 11, 10, 0, 7, 11,
-        5, 10, 10, 19, 10, 11, 7, 11, 5, 4, 10, 4, 10, 0, 7, 11,
-        5, 10, 10, 4, 10, 11, 7, 11, 5, 6, 10, 4, 10, 0, 7, 11,
-    };
-
-    static constexpr u8 bitCycles[256] {
-        8, 8, 8, 8, 8, 8, 15, 8, 8, 8, 8, 8, 8, 8, 15, 8,
-        8, 8, 8, 8, 8, 8, 15, 8, 8, 8, 8, 8, 8, 8, 15, 8,
-        8, 8, 8, 8, 8, 8, 15, 8, 8, 8, 8, 8, 8, 8, 15, 8,
-        8, 8, 8, 8, 8, 8, 15, 8, 8, 8, 8, 8, 8, 8, 15, 8,
-        8, 8, 8, 8, 8, 8, 12, 8, 8, 8, 8, 8, 8, 8, 12, 8,
-        8, 8, 8, 8, 8, 8, 12, 8, 8, 8, 8, 8, 8, 8, 12, 8,
-        8, 8, 8, 8, 8, 8, 12, 8, 8, 8, 8, 8, 8, 8, 12, 8,
-        8, 8, 8, 8, 8, 8, 12, 8, 8, 8, 8, 8, 8, 8, 12, 8,
-        8, 8, 8, 8, 8, 8, 15, 8, 8, 8, 8, 8, 8, 8, 15, 8,
-        8, 8, 8, 8, 8, 8, 15, 8, 8, 8, 8, 8, 8, 8, 15, 8,
-        8, 8, 8, 8, 8, 8, 15, 8, 8, 8, 8, 8, 8, 8, 15, 8,
-        8, 8, 8, 8, 8, 8, 15, 8, 8, 8, 8, 8, 8, 8, 15, 8,
-        8, 8, 8, 8, 8, 8, 15, 8, 8, 8, 8, 8, 8, 8, 15, 8,
-        8, 8, 8, 8, 8, 8, 15, 8, 8, 8, 8, 8, 8, 8, 15, 8,
-        8, 8, 8, 8, 8, 8, 15, 8, 8, 8, 8, 8, 8, 8, 15, 8,
-        8, 8, 8, 8, 8, 8, 15, 8, 8, 8, 8, 8, 8, 8, 15, 8,
-    };
-
-    static constexpr u8 miscCycles[256] {
-        4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4,
-        4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4,
-        4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4,
-        4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4,
-        12, 12, 15, 20, 8, 14, 8, 9, 12, 12, 15, 20, 4, 14, 4, 9,
-        12, 12, 15, 20, 4, 4, 8, 9, 12, 12, 15, 20, 4, 4, 8, 9,
-        12, 12, 15, 20, 4, 4, 4, 18, 12, 12, 15, 20, 4, 4, 4, 18,
-        12, 12, 15, 20, 4, 4, 4, 4, 12, 12, 15, 20, 4, 4, 4, 4,
-        4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4,
-        4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4,
-        16, 16, 16, 16, 4, 4, 4, 4, 16, 16, 16, 16, 4, 4, 4, 4,
-        16, 16, 16, 16, 4, 4, 4, 4, 16, 16, 16, 16, 4, 4, 4, 4,
-        4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4,
-        4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4,
-        4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4,
-        4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4,
-    };
-
-    static constexpr u8 indexCycles[256] {
-        4, 4, 4, 4, 8, 8, 11, 4, 4, 15, 4, 4, 8, 8, 11, 4,
-        4, 4, 4, 4, 8, 8, 11, 4, 4, 15, 4, 4, 8, 8, 11, 4,
-        4, 14, 10, 20, 8, 8, 11, 4, 4, 15, 20, 10, 8, 8, 11, 4,
-        4, 4, 4, 4, 23, 23, 19, 4, 4, 15, 4, 4, 8, 8, 11, 4,
-        8, 8, 8, 8, 8, 8, 19, 8, 8, 8, 8, 8, 8, 8, 19, 8,
-        8, 8, 8, 8, 8, 8, 19, 8, 8, 8, 8, 8, 8, 8, 19, 8,
-        8, 8, 8, 8, 8, 8, 19, 8, 8, 8, 8, 8, 8, 8, 19, 8,
-        19, 19, 19, 19, 19, 19, 4, 19, 8, 8, 8, 8, 8, 8, 19, 8,
-        8, 8, 8, 8, 8, 8, 19, 8, 8, 8, 8, 8, 8, 8, 19, 8,
-        8, 8, 8, 8, 8, 8, 19, 8, 8, 8, 8, 8, 8, 8, 19, 8,
-        8, 8, 8, 8, 8, 8, 19, 8, 8, 8, 8, 8, 8, 8, 19, 8,
-        8, 8, 8, 8, 8, 8, 19, 8, 8, 8, 8, 8, 8, 8, 19, 8,
-        4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 0, 4, 4, 4, 4,
-        4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4,
-        4, 14, 4, 23, 4, 15, 4, 4, 4, 8, 4, 4, 4, 4, 4, 4,
-        4, 4, 4, 4, 4, 4, 4, 4, 4, 10, 4, 4, 4, 4, 4, 4,
-    };
-
-    static constexpr u8 indexBitCycles[256] {
-        23, 23, 23, 23, 23, 23, 23, 23, 23, 23, 23, 23, 23, 23, 23, 23,
-        23, 23, 23, 23, 23, 23, 23, 23, 23, 23, 23, 23, 23, 23, 23, 23,
-        23, 23, 23, 23, 23, 23, 23, 23, 23, 23, 23, 23, 23, 23, 23, 23,
-        23, 23, 23, 23, 23, 23, 23, 23, 23, 23, 23, 23, 23, 23, 23, 23,
-        20, 20, 20, 20, 20, 20, 20, 20, 20, 20, 20, 20, 20, 20, 20, 20,
-        20, 20, 20, 20, 20, 20, 20, 20, 20, 20, 20, 20, 20, 20, 20, 20,
-        20, 20, 20, 20, 20, 20, 20, 20, 20, 20, 20, 20, 20, 20, 20, 20,
-        20, 20, 20, 20, 20, 20, 20, 20, 20, 20, 20, 20, 20, 20, 20, 20,
-        23, 23, 23, 23, 23, 23, 23, 23, 23, 23, 23, 23, 23, 23, 23, 23,
-        23, 23, 23, 23, 23, 23, 23, 23, 23, 23, 23, 23, 23, 23, 23, 23,
-        23, 23, 23, 23, 23, 23, 23, 23, 23, 23, 23, 23, 23, 23, 23, 23,
-        23, 23, 23, 23, 23, 23, 23, 23, 23, 23, 23, 23, 23, 23, 23, 23,
-        23, 23, 23, 23, 23, 23, 23, 23, 23, 23, 23, 23, 23, 23, 23, 23,
-        23, 23, 23, 23, 23, 23, 23, 23, 23, 23, 23, 23, 23, 23, 23, 23,
-        23, 23, 23, 23, 23, 23, 23, 23, 23, 23, 23, 23, 23, 23, 23, 23,
-        23, 23, 23, 23, 23, 23, 23, 23, 23, 23, 23, 23, 23, 23, 23, 23,
+        &z80::rlc<mode, AddressMode::RegisterB>, // $00: rlc (ix+d/iy+d), b
+        &z80::rlc<mode, AddressMode::RegisterC>, // $01: rlc (ix+d/iy+d), c
+        &z80::rlc<mode, AddressMode::RegisterD>, // $02: rlc (ix+d/iy+d), d
+        &z80::rlc<mode, AddressMode::RegisterE>, // $03: rlc (ix+d/iy+d), e
+        &z80::rlc<mode, AddressMode::RegisterH>, // $04: rlc (ix+d/iy+d), h
+        &z80::rlc<mode, AddressMode::RegisterL>, // $05: rlc (ix+d/iy+d), l
+        &z80::rlc<mode, mode>, // $06: rlc (ix+d/iy+d)
+        &z80::rlc<mode, AddressMode::Accumulator>, // $07: rlc (ix+d/iy+d), a
+        &z80::rrc<mode, AddressMode::RegisterB>, // $08: rrc (ix+d/iy+d), b
+        &z80::rrc<mode, AddressMode::RegisterC>, // $09: rrc (ix+d/iy+d), c
+        &z80::rrc<mode, AddressMode::RegisterD>, // $0A: rrc (ix+d/iy+d), d
+        &z80::rrc<mode, AddressMode::RegisterE>, // $0B: rrc (ix+d/iy+d), e
+        &z80::rrc<mode, AddressMode::RegisterH>, // $0C: rrc (ix+d/iy+d), h
+        &z80::rrc<mode, AddressMode::RegisterL>, // $0D: rrc (ix+d/iy+d), l
+        &z80::rrc<mode, mode>, // $0E: rrc (ix+d/iy+d)
+        &z80::rrc<mode, AddressMode::Accumulator>, // $0F: rrc (ix+d/iy+d), a
+        &z80::rl<mode, AddressMode::RegisterB>, // $10: rl (ix+d/iy+d), b
+        &z80::rl<mode, AddressMode::RegisterC>, // $11: rl (ix+d/iy+d), c
+        &z80::rl<mode, AddressMode::RegisterD>, // $12: rl (ix+d/iy+d), d
+        &z80::rl<mode, AddressMode::RegisterE>, // $13: rl (ix+d/iy+d), e
+        &z80::rl<mode, AddressMode::RegisterH>, // $14: rl (ix+d/iy+d), h
+        &z80::rl<mode, AddressMode::RegisterL>, // $15: rl (ix+d/iy+d), l
+        &z80::rl<mode, mode>, // $16: rl (ix+d/iy+d)
+        &z80::rl<mode, AddressMode::Accumulator>, // $17: rl (ix+d/iy+d), a
+        &z80::rr<mode, AddressMode::RegisterB>, // $18: rr (ix+d/iy+d), b
+        &z80::rr<mode, AddressMode::RegisterC>, // $19: rr (ix+d/iy+d), c
+        &z80::rr<mode, AddressMode::RegisterD>, // $1A: rr (ix+d/iy+d), d
+        &z80::rr<mode, AddressMode::RegisterE>, // $1B: rr (ix+d/iy+d), e
+        &z80::rr<mode, AddressMode::RegisterH>, // $1C: rr (ix+d/iy+d), h
+        &z80::rr<mode, AddressMode::RegisterL>, // $1D: rr (ix+d/iy+d), l
+        &z80::rr<mode, mode>, // $1E: rr (ix+d/iy+d)
+        &z80::rr<mode, AddressMode::Accumulator>, // $1F: rr (ix+d/iy+d), a
+        &z80::sla<mode, AddressMode::RegisterB>, // $20: sla (ix+d/iy+d), b
+        &z80::sla<mode, AddressMode::RegisterC>, // $21: sla (ix+d/iy+d), c
+        &z80::sla<mode, AddressMode::RegisterD>, // $22: sla (ix+d/iy+d), d
+        &z80::sla<mode, AddressMode::RegisterE>, // $23: sla (ix+d/iy+d), e
+        &z80::sla<mode, AddressMode::RegisterH>, // $24: sla (ix+d/iy+d), h
+        &z80::sla<mode, AddressMode::RegisterL>, // $25: sla (ix+d/iy+d), l
+        &z80::sla<mode, mode>, // $26: sla (ix+d/iy+d)
+        &z80::sla<mode, AddressMode::Accumulator>, // $27: sla (ix+d/iy+d), a
+        &z80::sra<mode, AddressMode::RegisterB>, // $28: sra (ix+d/iy+d), b
+        &z80::sra<mode, AddressMode::RegisterC>, // $29: sra (ix+d/iy+d), c
+        &z80::sra<mode, AddressMode::RegisterD>, // $2A: sra (ix+d/iy+d), d
+        &z80::sra<mode, AddressMode::RegisterE>, // $2B: sra (ix+d/iy+d), e
+        &z80::sra<mode, AddressMode::RegisterH>, // $2C: sra (ix+d/iy+d), h
+        &z80::sra<mode, AddressMode::RegisterL>, // $2D: sra (ix+d/iy+d), l
+        &z80::sra<mode, mode>, // $2E: sra (ix+d/iy+d)
+        &z80::sra<mode, AddressMode::Accumulator>, // $2F: sra (ix+d/iy+d), a
+        &z80::sll<mode, AddressMode::RegisterB>, // $30: sll (ix+d/iy+d), b
+        &z80::sll<mode, AddressMode::RegisterC>, // $31: sll (ix+d/iy+d), c
+        &z80::sll<mode, AddressMode::RegisterD>, // $32: sll (ix+d/iy+d), d
+        &z80::sll<mode, AddressMode::RegisterE>, // $33: sll (ix+d/iy+d), e
+        &z80::sll<mode, AddressMode::RegisterH>, // $34: sll (ix+d/iy+d), h
+        &z80::sll<mode, AddressMode::RegisterL>, // $35: sll (ix+d/iy+d), l
+        &z80::sll<mode, mode>, // $36: sll (ix+d/iy+d)
+        &z80::sll<mode, AddressMode::Accumulator>, // $37: sll (ix+d/iy+d), a
+        &z80::srl<mode, AddressMode::RegisterB>, // $38: srl (ix+d/iy+d), b
+        &z80::srl<mode, AddressMode::RegisterC>, // $39: srl (ix+d/iy+d), c
+        &z80::srl<mode, AddressMode::RegisterD>, // $3A: srl (ix+d/iy+d), d
+        &z80::srl<mode, AddressMode::RegisterE>, // $3B: srl (ix+d/iy+d), e
+        &z80::srl<mode, AddressMode::RegisterH>, // $3C: srl (ix+d/iy+d), h
+        &z80::srl<mode, AddressMode::RegisterL>, // $3D: srl (ix+d/iy+d), l
+        &z80::srl<mode, mode>, // $3E: srl (ix+d/iy+d)
+        &z80::srl<mode, AddressMode::Accumulator>, // $3F: srl (ix+d/iy+d), a
+        &z80::bit<0x01U, mode>, // $40: bit 0, (ix+d/iy+d)
+        &z80::bit<0x01U, mode>, // $41: bit 0, (ix+d/iy+d)
+        &z80::bit<0x01U, mode>, // $42: bit 0, (ix+d/iy+d)
+        &z80::bit<0x01U, mode>, // $43: bit 0, (ix+d/iy+d)
+        &z80::bit<0x01U, mode>, // $44: bit 0, (ix+d/iy+d)
+        &z80::bit<0x01U, mode>, // $45: bit 0, (ix+d/iy+d)
+        &z80::bit<0x01U, mode>, // $46: bit 0, (ix+d/iy+d)
+        &z80::bit<0x01U, mode>, // $47: bit 0, (ix+d/iy+d)
+        &z80::bit<0x02U, mode>, // $48: bit 1, (ix+d/iy+d)
+        &z80::bit<0x02U, mode>, // $49: bit 1, (ix+d/iy+d)
+        &z80::bit<0x02U, mode>, // $4A: bit 1, (ix+d/iy+d)
+        &z80::bit<0x02U, mode>, // $4B: bit 1, (ix+d/iy+d)
+        &z80::bit<0x02U, mode>, // $4C: bit 1, (ix+d/iy+d)
+        &z80::bit<0x02U, mode>, // $4D: bit 1, (ix+d/iy+d)
+        &z80::bit<0x02U, mode>, // $4E: bit 1, (ix+d/iy+d)
+        &z80::bit<0x02U, mode>, // $4F: bit 1, (ix+d/iy+d)
+        &z80::bit<0x04U, mode>, // $50: bit 2, (ix+d/iy+d)
+        &z80::bit<0x04U, mode>, // $51: bit 2, (ix+d/iy+d)
+        &z80::bit<0x04U, mode>, // $52: bit 2, (ix+d/iy+d)
+        &z80::bit<0x04U, mode>, // $53: bit 2, (ix+d/iy+d)
+        &z80::bit<0x04U, mode>, // $54: bit 2, (ix+d/iy+d)
+        &z80::bit<0x04U, mode>, // $55: bit 2, (ix+d/iy+d)
+        &z80::bit<0x04U, mode>, // $56: bit 2, (ix+d/iy+d)
+        &z80::bit<0x04U, mode>, // $57: bit 2, (ix+d/iy+d)
+        &z80::bit<0x08U, mode>, // $58: bit 3, (ix+d/iy+d)
+        &z80::bit<0x08U, mode>, // $59: bit 3, (ix+d/iy+d)
+        &z80::bit<0x08U, mode>, // $5A: bit 3, (ix+d/iy+d)
+        &z80::bit<0x08U, mode>, // $5B: bit 3, (ix+d/iy+d)
+        &z80::bit<0x08U, mode>, // $5C: bit 3, (ix+d/iy+d)
+        &z80::bit<0x08U, mode>, // $5D: bit 3, (ix+d/iy+d)
+        &z80::bit<0x08U, mode>, // $5E: bit 3, (ix+d/iy+d)
+        &z80::bit<0x08U, mode>, // $5F: bit 3, (ix+d/iy+d)
+        &z80::bit<0x10U, mode>, // $60: bit 4, (ix+d/iy+d)
+        &z80::bit<0x10U, mode>, // $61: bit 4, (ix+d/iy+d)
+        &z80::bit<0x10U, mode>, // $62: bit 4, (ix+d/iy+d)
+        &z80::bit<0x10U, mode>, // $63: bit 4, (ix+d/iy+d)
+        &z80::bit<0x10U, mode>, // $64: bit 4, (ix+d/iy+d)
+        &z80::bit<0x10U, mode>, // $65: bit 4, (ix+d/iy+d)
+        &z80::bit<0x10U, mode>, // $66: bit 4, (ix+d/iy+d)
+        &z80::bit<0x10U, mode>, // $67: bit 4, (ix+d/iy+d)
+        &z80::bit<0x20U, mode>, // $68: bit 5, (ix+d/iy+d)
+        &z80::bit<0x20U, mode>, // $69: bit 5, (ix+d/iy+d)
+        &z80::bit<0x20U, mode>, // $6A: bit 5, (ix+d/iy+d)
+        &z80::bit<0x20U, mode>, // $6B: bit 5, (ix+d/iy+d)
+        &z80::bit<0x20U, mode>, // $6C: bit 5, (ix+d/iy+d)
+        &z80::bit<0x20U, mode>, // $6D: bit 5, (ix+d/iy+d)
+        &z80::bit<0x20U, mode>, // $6E: bit 5, (ix+d/iy+d)
+        &z80::bit<0x20U, mode>, // $6F: bit 5, (ix+d/iy+d)
+        &z80::bit<0x40U, mode>, // $70: bit 6, (ix+d/iy+d)
+        &z80::bit<0x40U, mode>, // $71: bit 6, (ix+d/iy+d)
+        &z80::bit<0x40U, mode>, // $72: bit 6, (ix+d/iy+d)
+        &z80::bit<0x40U, mode>, // $73: bit 6, (ix+d/iy+d)
+        &z80::bit<0x40U, mode>, // $74: bit 6, (ix+d/iy+d)
+        &z80::bit<0x40U, mode>, // $75: bit 6, (ix+d/iy+d)
+        &z80::bit<0x40U, mode>, // $76: bit 6, (ix+d/iy+d)
+        &z80::bit<0x40U, mode>, // $77: bit 6, (ix+d/iy+d)
+        &z80::bit<0x80U, mode>, // $78: bit 7, (ix+d/iy+d)
+        &z80::bit<0x80U, mode>, // $79: bit 7, (ix+d/iy+d)
+        &z80::bit<0x80U, mode>, // $7A: bit 7, (ix+d/iy+d)
+        &z80::bit<0x80U, mode>, // $7B: bit 7, (ix+d/iy+d)
+        &z80::bit<0x80U, mode>, // $7C: bit 7, (ix+d/iy+d)
+        &z80::bit<0x80U, mode>, // $7D: bit 7, (ix+d/iy+d)
+        &z80::bit<0x80U, mode>, // $7E: bit 7, (ix+d/iy+d)
+        &z80::bit<0x80U, mode>, // $7F: bit 7, (ix+d/iy+d)
+        &z80::res<0xFEU, mode, AddressMode::RegisterB>, // $80: res 0, (ix+d/iy+d), b
+        &z80::res<0xFEU, mode, AddressMode::RegisterC>, // $81: res 0, (ix+d/iy+d), c
+        &z80::res<0xFEU, mode, AddressMode::RegisterD>, // $82: res 0, (ix+d/iy+d), d
+        &z80::res<0xFEU, mode, AddressMode::RegisterE>, // $83: res 0, (ix+d/iy+d), e
+        &z80::res<0xFEU, mode, AddressMode::RegisterH>, // $84: res 0, (ix+d/iy+d), h
+        &z80::res<0xFEU, mode, AddressMode::RegisterL>, // $85: res 0, (ix+d/iy+d), l
+        &z80::res<0xFEU, mode>, // $86: res 0, (ix+d/iy+d)
+        &z80::res<0xFEU, mode, AddressMode::Accumulator>, // $87: res 0, (ix+d/iy+d), a
+        &z80::res<0xFDU, mode, AddressMode::RegisterB>, // $88: res 1, (ix+d/iy+d), b
+        &z80::res<0xFDU, mode, AddressMode::RegisterC>, // $89: res 1, (ix+d/iy+d), c
+        &z80::res<0xFDU, mode, AddressMode::RegisterD>, // $8A: res 1, (ix+d/iy+d), d
+        &z80::res<0xFDU, mode, AddressMode::RegisterE>, // $8B: res 1, (ix+d/iy+d), e
+        &z80::res<0xFDU, mode, AddressMode::RegisterH>, // $8C: res 1, (ix+d/iy+d), h
+        &z80::res<0xFDU, mode, AddressMode::RegisterL>, // $8D: res 1, (ix+d/iy+d), l
+        &z80::res<0xFDU, mode>, // $8E: res 1, (ix+d/iy+d)
+        &z80::res<0xFDU, mode, AddressMode::Accumulator>, // $8F: res 1, (ix+d/iy+d), a
+        &z80::res<0xFBU, mode, AddressMode::RegisterB>, // $90: res 2, (ix+d/iy+d), b
+        &z80::res<0xFBU, mode, AddressMode::RegisterC>, // $91: res 2, (ix+d/iy+d), c
+        &z80::res<0xFBU, mode, AddressMode::RegisterD>, // $92: res 2, (ix+d/iy+d), d
+        &z80::res<0xFBU, mode, AddressMode::RegisterE>, // $93: res 2, (ix+d/iy+d), e
+        &z80::res<0xFBU, mode, AddressMode::RegisterH>, // $94: res 2, (ix+d/iy+d), h
+        &z80::res<0xFBU, mode, AddressMode::RegisterL>, // $95: res 2, (ix+d/iy+d), l
+        &z80::res<0xFBU, mode>, // $96: res 2, (ix+d/iy+d)
+        &z80::res<0xFBU, mode, AddressMode::Accumulator>, // $97: res 2, (ix+d/iy+d), a
+        &z80::res<0xF7U, mode, AddressMode::RegisterB>, // $98: res 3, (ix+d/iy+d), b
+        &z80::res<0xF7U, mode, AddressMode::RegisterC>, // $99: res 3, (ix+d/iy+d), c
+        &z80::res<0xF7U, mode, AddressMode::RegisterD>, // $9A: res 3, (ix+d/iy+d), d
+        &z80::res<0xF7U, mode, AddressMode::RegisterE>, // $9B: res 3, (ix+d/iy+d), e
+        &z80::res<0xF7U, mode, AddressMode::RegisterH>, // $9C: res 3, (ix+d/iy+d), h
+        &z80::res<0xF7U, mode, AddressMode::RegisterL>, // $9D: res 3, (ix+d/iy+d), l
+        &z80::res<0xF7U, mode>, // $9E: res 3, (ix+d/iy+d)
+        &z80::res<0xF7U, mode, AddressMode::Accumulator>, // $9F: res 3, (ix+d/iy+d), a
+        &z80::res<0xEFU, mode, AddressMode::RegisterB>, // $A0: res 4, (ix+d/iy+d), b
+        &z80::res<0xEFU, mode, AddressMode::RegisterC>, // $A1: res 4, (ix+d/iy+d), c
+        &z80::res<0xEFU, mode, AddressMode::RegisterD>, // $A2: res 4, (ix+d/iy+d), d
+        &z80::res<0xEFU, mode, AddressMode::RegisterE>, // $A3: res 4, (ix+d/iy+d), e
+        &z80::res<0xEFU, mode, AddressMode::RegisterH>, // $A4: res 4, (ix+d/iy+d), h
+        &z80::res<0xEFU, mode, AddressMode::RegisterL>, // $A5: res 4, (ix+d/iy+d), l
+        &z80::res<0xEFU, mode>, // $A6: res 4, (ix+d/iy+d)
+        &z80::res<0xEFU, mode, AddressMode::Accumulator>, // $A7: res 4, (ix+d/iy+d), a
+        &z80::res<0xDFU, mode, AddressMode::RegisterB>, // $A8: res 5, (ix+d/iy+d), b
+        &z80::res<0xDFU, mode, AddressMode::RegisterC>, // $A9: res 5, (ix+d/iy+d), c
+        &z80::res<0xDFU, mode, AddressMode::RegisterD>, // $AA: res 5, (ix+d/iy+d), d
+        &z80::res<0xDFU, mode, AddressMode::RegisterE>, // $AB: res 5, (ix+d/iy+d), e
+        &z80::res<0xDFU, mode, AddressMode::RegisterH>, // $AC: res 5, (ix+d/iy+d), h
+        &z80::res<0xDFU, mode, AddressMode::RegisterL>, // $AD: res 5, (ix+d/iy+d), l
+        &z80::res<0xDFU, mode>, // $AE: res 5, (ix+d/iy+d)
+        &z80::res<0xDFU, mode, AddressMode::Accumulator>, // $AF: res 5, (ix+d/iy+d), a
+        &z80::res<0xBFU, mode, AddressMode::RegisterB>, // $B0: res 6, (ix+d/iy+d), b
+        &z80::res<0xBFU, mode, AddressMode::RegisterC>, // $B1: res 6, (ix+d/iy+d), c
+        &z80::res<0xBFU, mode, AddressMode::RegisterD>, // $B2: res 6, (ix+d/iy+d), d
+        &z80::res<0xBFU, mode, AddressMode::RegisterE>, // $B3: res 6, (ix+d/iy+d), e
+        &z80::res<0xBFU, mode, AddressMode::RegisterH>, // $B4: res 6, (ix+d/iy+d), h
+        &z80::res<0xBFU, mode, AddressMode::RegisterL>, // $B5: res 6, (ix+d/iy+d), l
+        &z80::res<0xBFU, mode>, // $B6: res 6, (ix+d/iy+d)
+        &z80::res<0xBFU, mode, AddressMode::Accumulator>, // $B7: res 6, (ix+d/iy+d), a
+        &z80::res<0x7FU, mode, AddressMode::RegisterB>, // $B8: res 7, (ix+d/iy+d), b
+        &z80::res<0x7FU, mode, AddressMode::RegisterC>, // $B9: res 7, (ix+d/iy+d), c
+        &z80::res<0x7FU, mode, AddressMode::RegisterD>, // $BA: res 7, (ix+d/iy+d), d
+        &z80::res<0x7FU, mode, AddressMode::RegisterE>, // $BB: res 7, (ix+d/iy+d), e
+        &z80::res<0x7FU, mode, AddressMode::RegisterH>, // $BC: res 7, (ix+d/iy+d), h
+        &z80::res<0x7FU, mode, AddressMode::RegisterL>, // $BD: res 7, (ix+d/iy+d), l
+        &z80::res<0x7FU, mode>, // $BE: res 7, (ix+d/iy+d)
+        &z80::res<0x7FU, mode, AddressMode::Accumulator>, // $BF: res 7, (ix+d/iy+d), a
+        &z80::set<0x01U, mode, AddressMode::RegisterB>, // $C0: set 0, (ix+d/iy+d), b
+        &z80::set<0x01U, mode, AddressMode::RegisterC>, // $C1: set 0, (ix+d/iy+d), c
+        &z80::set<0x01U, mode, AddressMode::RegisterD>, // $C2: set 0, (ix+d/iy+d), d
+        &z80::set<0x01U, mode, AddressMode::RegisterE>, // $C3: set 0, (ix+d/iy+d), e
+        &z80::set<0x01U, mode, AddressMode::RegisterH>, // $C4: set 0, (ix+d/iy+d), h
+        &z80::set<0x01U, mode, AddressMode::RegisterL>, // $C5: set 0, (ix+d/iy+d), l
+        &z80::set<0x01U, mode>, // $C6: set 0, (ix+d/iy+d)
+        &z80::set<0x01U, mode, AddressMode::Accumulator>, // $C7: set 0, (ix+d/iy+d), a
+        &z80::set<0x02U, mode, AddressMode::RegisterB>, // $C8: set 1, (ix+d/iy+d), b
+        &z80::set<0x02U, mode, AddressMode::RegisterC>, // $C9: set 1, (ix+d/iy+d), c
+        &z80::set<0x02U, mode, AddressMode::RegisterD>, // $CA: set 1, (ix+d/iy+d), d
+        &z80::set<0x02U, mode, AddressMode::RegisterE>, // $CB: set 1, (ix+d/iy+d), e
+        &z80::set<0x02U, mode, AddressMode::RegisterH>, // $CC: set 1, (ix+d/iy+d), h
+        &z80::set<0x02U, mode, AddressMode::RegisterL>, // $CD: set 1, (ix+d/iy+d), l
+        &z80::set<0x02U, mode>, // $CE: set 1, (ix+d/iy+d)
+        &z80::set<0x02U, mode, AddressMode::Accumulator>, // $CF: set 1, (ix+d/iy+d), a
+        &z80::set<0x04U, mode, AddressMode::RegisterB>, // $D0: set 2, (ix+d/iy+d), b
+        &z80::set<0x04U, mode, AddressMode::RegisterC>, // $D1: set 2, (ix+d/iy+d), c
+        &z80::set<0x04U, mode, AddressMode::RegisterD>, // $D2: set 2, (ix+d/iy+d), d
+        &z80::set<0x04U, mode, AddressMode::RegisterE>, // $D3: set 2, (ix+d/iy+d), e
+        &z80::set<0x04U, mode, AddressMode::RegisterH>, // $D4: set 2, (ix+d/iy+d), h
+        &z80::set<0x04U, mode, AddressMode::RegisterL>, // $D5: set 2, (ix+d/iy+d), l
+        &z80::set<0x04U, mode>, // $D6: set 2, (ix+d/iy+d)
+        &z80::set<0x04U, mode, AddressMode::Accumulator>, // $D7: set 2, (ix+d/iy+d), a
+        &z80::set<0x08U, mode, AddressMode::RegisterB>, // $D8: set 3, (ix+d/iy+d), b
+        &z80::set<0x08U, mode, AddressMode::RegisterC>, // $D9: set 3, (ix+d/iy+d), c
+        &z80::set<0x08U, mode, AddressMode::RegisterD>, // $DA: set 3, (ix+d/iy+d), d
+        &z80::set<0x08U, mode, AddressMode::RegisterE>, // $DB: set 3, (ix+d/iy+d), e
+        &z80::set<0x08U, mode, AddressMode::RegisterH>, // $DC: set 3, (ix+d/iy+d), h
+        &z80::set<0x08U, mode, AddressMode::RegisterL>, // $DD: set 3, (ix+d/iy+d), l
+        &z80::set<0x08U, mode>, // $DE: set 3, (ix+d/iy+d)
+        &z80::set<0x08U, mode, AddressMode::Accumulator>, // $DF: set 3, (ix+d/iy+d), a
+        &z80::set<0x10U, mode, AddressMode::RegisterB>, // $E0: set 4, (ix+d/iy+d), b
+        &z80::set<0x10U, mode, AddressMode::RegisterC>, // $E1: set 4, (ix+d/iy+d), c
+        &z80::set<0x10U, mode, AddressMode::RegisterD>, // $E2: set 4, (ix+d/iy+d), d
+        &z80::set<0x10U, mode, AddressMode::RegisterE>, // $E3: set 4, (ix+d/iy+d), e
+        &z80::set<0x10U, mode, AddressMode::RegisterH>, // $E4: set 4, (ix+d/iy+d), h
+        &z80::set<0x10U, mode, AddressMode::RegisterL>, // $E5: set 4, (ix+d/iy+d), l
+        &z80::set<0x10U, mode>, // $E6: set 4, (ix+d/iy+d)
+        &z80::set<0x10U, mode, AddressMode::Accumulator>, // $E7: set 4, (ix+d/iy+d), a
+        &z80::set<0x20U, mode, AddressMode::RegisterB>, // $E8: set 5, (ix+d/iy+d), b
+        &z80::set<0x20U, mode, AddressMode::RegisterC>, // $E9: set 5, (ix+d/iy+d), c
+        &z80::set<0x20U, mode, AddressMode::RegisterD>, // $EA: set 5, (ix+d/iy+d), d
+        &z80::set<0x20U, mode, AddressMode::RegisterE>, // $EB: set 5, (ix+d/iy+d), e
+        &z80::set<0x20U, mode, AddressMode::RegisterH>, // $EC: set 5, (ix+d/iy+d), h
+        &z80::set<0x20U, mode, AddressMode::RegisterL>, // $ED: set 5, (ix+d/iy+d), l
+        &z80::set<0x20U, mode>, // $EE: set 5, (ix+d/iy+d)
+        &z80::set<0x20U, mode, AddressMode::Accumulator>, // $EF: set 5, (ix+d/iy+d), a
+        &z80::set<0x40U, mode, AddressMode::RegisterB>, // $F0: set 6, (ix+d/iy+d), b
+        &z80::set<0x40U, mode, AddressMode::RegisterC>, // $F1: set 6, (ix+d/iy+d), c
+        &z80::set<0x40U, mode, AddressMode::RegisterD>, // $F2: set 6, (ix+d/iy+d), d
+        &z80::set<0x40U, mode, AddressMode::RegisterE>, // $F3: set 6, (ix+d/iy+d), e
+        &z80::set<0x40U, mode, AddressMode::RegisterH>, // $F4: set 6, (ix+d/iy+d), h
+        &z80::set<0x40U, mode, AddressMode::RegisterL>, // $F5: set 6, (ix+d/iy+d), l
+        &z80::set<0x40U, mode>, // $F6: set 6, (ix+d/iy+d)
+        &z80::set<0x40U, mode, AddressMode::Accumulator>, // $F7: set 6, (ix+d/iy+d), a
+        &z80::set<0x80U, mode, AddressMode::RegisterB>, // $F8: set 7, (ix+d/iy+d), b
+        &z80::set<0x80U, mode, AddressMode::RegisterC>, // $F9: set 7, (ix+d/iy+d), c
+        &z80::set<0x80U, mode, AddressMode::RegisterD>, // $FA: set 7, (ix+d/iy+d), d
+        &z80::set<0x80U, mode, AddressMode::RegisterE>, // $FB: set 7, (ix+d/iy+d), e
+        &z80::set<0x80U, mode, AddressMode::RegisterH>, // $FC: set 7, (ix+d/iy+d), h
+        &z80::set<0x80U, mode, AddressMode::RegisterL>, // $FD: set 7, (ix+d/iy+d), l
+        &z80::set<0x80U, mode>, // $FE: set 7, (ix+d/iy+d)
+        &z80::set<0x80U, mode, AddressMode::Accumulator>, // $FF: set 7, (ix+d/iy+d), a
     };
 
     bool iff1 {false}, iff2 {false}; // interrupt latch
-    u8 imode {}; // interrupt mode
+    bool nmiRequested {false}, intRequested {false};
+    u8 imode {0}; // interrupt mode
+    u8 ivector {0}; // interrupt vector
     bool halted {false};
     int requested {};
     u8 a2 {};
@@ -1672,8 +2158,63 @@ template<typename Memory, typename IO>
 int z80<Memory, IO>::run(const int cycles)
 {
     requested = cycles;
-    while (requested > 0) { tick(); }
+    while (requested > 0) {
+        // increment refresh register
+        r = (r & 0x80U) | (r + 1U & ~0x80U);
+
+        // handle non maskable interrupts
+        if (nmiRequested) {
+            iff2 = iff1;
+            iff1 = halted = nmiRequested = false;
+            rst<0x66>();
+            requested -= 11;
+            continue;
+        }
+
+        // handle maskable interrupts
+        if (intRequested & iff1) {
+            iff1 = iff2 = halted = intRequested = false;
+            pushpc();
+
+            if (imode == 0) {
+                pc = ivector;
+                requested -= 11;
+            } else if (imode == 1) {
+                pc = 0x38;
+                requested -= 13;
+            } else if (imode == 2) {
+                pc = (i << 8U) | (ivector & 0xFE);
+                requested -= 19;
+            }
+
+            continue;
+        }
+
+        // else execute an instruction
+        if (!halted)
+            tick();
+    }
     return requested;
+}
+
+template<typename Memory, typename IO>
+void z80<Memory, IO>::reset()
+{
+    pc = i = r = imode = ivector = 0;
+    iff1 = iff2 = halted = false;
+}
+
+template<typename Memory, typename IO>
+void z80<Memory, IO>::reqNmi()
+{
+    nmiRequested = true;
+}
+
+template<typename Memory, typename IO>
+void z80<Memory, IO>::reqInt(const u8 vector)
+{
+    intRequested = true;
+    ivector = vector;
 }
 
 template<typename Memory, typename IO>
