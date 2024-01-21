@@ -26,8 +26,6 @@ target_compile_features(${PROJECT_NAME} INTERFACE cxx_std_20)
 
 if (TEST_Z80)
     enable_testing()
-
-    add_subdirectory(external/google-test)
     add_subdirectory(tests)
 endif ()
 
