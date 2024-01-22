@@ -1,5 +1,6 @@
 .idea
 cmake-build-debug
 cmake-build-release
-tests/test-roms/*
-tests/unit-tests/*
+tests/test-roms/*.com
+tests/test-roms/*.cim
+tests/unit-tests/*.json
