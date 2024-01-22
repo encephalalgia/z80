@@ -9,8 +9,14 @@
 #include <format>
 
 /**
- * \brief
- * \tparam Memory
+ * \brief An emulator of the Z80 cpu that emulates as much of its undocumented behavior that I could find.
+ * \tparam Memory To use the CPU it must be provided a memory object. Requires 6 member functions with the following signatures:
+ *  - u8 read8(u16 addr)
+ *  - void write8(u16 addr, u8 val)
+ *  - u16 read16(u16 addr)
+ *  - void write16(u16 addr, u16 val)
+ *  - u8 input(z80<Memory>* cpu, u8 port)
+ *  - void output(z80<Memory>* cpu, u8 port, u8 val)
  */
 template<typename Memory>
 class z80 {
@@ -29,37 +35,37 @@ public:
     };
 
     /**
-     * \brief
-     * \param cycles
-     * \return
+     * \brief Run the cpu for a set number of cycles.
+     * \param cycles the number of cycles to run for
+     * \return a negative number represeting the the amount of cycles the cpu exceeded while running
      */
     int run(int cycles);
 
     /**
-     * \brief
+     * \brief Step the cpu foward a single instruction.
      */
     void step();
 
     /**
-     * \brief
+     * \brief Resets the cpu. Register A and the SP will be initialized to 0xFF and 0xFFFF respectively.
      */
     void reset();
 
     /**
-     * \brief
+     * \brief Request a non-maskable interrupt.
      */
     void reqNmi();
 
     /**
-     * \brief
-     * \param vector
+     * \brief Request a maskable interrupt.
+     * \param vector the interrupt vector
      */
     void reqInt(u8 vector);
 
     /**
-     * \brief
-     * \param cycle
-     * \return
+     * \brief Returns a string representing the current state of the cpu.
+     * \param cycle the number of cycles the cpu has run for, default is 0
+     * \return the state of the cpu
      */
     [[nodiscard]] std::string toString(unsigned long long cycle=0) const;
 
@@ -76,18 +82,8 @@ public:
      */
     void setf(Flags& f, u8 val);
 
-    /**
-     * \brief To use the CPU it must be provided a memory object. Requires 6 member functions with the following signatures:
-     *  - u8 read8(u16 addr)
-     *  - void write8(u16 addr, u8 val)
-     *  - u16 read16(u16 addr)
-     *  - void write16(u16 addr, u16 val)
-     *  - u8 input(z80<Memory>* cpu, u8 port)
-     *  - void output(z80<Memory>* cpu, u8 port, u8 val)
-     */
-    Memory memory {};
-
     // internals
+    Memory memory {};
     Registers regs {}; // 8-bit registers b,c,d,e,h,l
     Flags flags {}; // functions as the 8-bit flag register
     u16 pc {}, sp {0xFFFF}, ix {}, iy {}, wz {}; // 16-bit registers
@@ -166,10 +162,10 @@ private:
     };
 
     static constexpr u8 indexCycles[256] {
-        4, 14, 11, 10, 8, 8, 11, 4, 4, 15, 4, 4, 8, 8, 11, 4,
-        4, 4, 4, 4, 8, 8, 11, 4, 4, 15, 4, 4, 8, 8, 11, 4,
-        4, 14, 20, 10, 8, 8, 11, 4, 4, 15, 20, 10, 8, 8, 11, 4,
-        4, 4, 4, 4, 23, 23, 19, 4, 4, 15, 4, 4, 8, 8, 11, 4,
+        4, 14, 11, 10, 8, 8, 11, 8, 8, 15, 11, 10, 8, 8, 11, 8,
+        12, 14, 11, 10, 8, 8, 11, 8, 8, 15, 11, 10, 8, 8, 11, 8,
+        11, 14, 20, 10, 8, 8, 11, 8, 11, 15, 20, 10, 8, 8, 11, 8,
+        11, 14, 17, 10, 23, 23, 19, 8, 11, 15, 17, 10, 8, 8, 11, 8,
         8, 8, 8, 8, 8, 8, 19, 8, 8, 8, 8, 8, 8, 8, 19, 8,
         8, 8, 8, 8, 8, 8, 19, 8, 8, 8, 8, 8, 8, 8, 19, 8,
         8, 8, 8, 8, 8, 8, 19, 8, 8, 8, 8, 8, 8, 8, 19, 8,
@@ -178,10 +174,10 @@ private:
         8, 8, 8, 8, 8, 8, 19, 8, 8, 8, 8, 8, 8, 8, 19, 8,
         8, 8, 8, 8, 8, 8, 19, 8, 8, 8, 8, 8, 8, 8, 19, 8,
         8, 8, 8, 8, 8, 8, 19, 8, 8, 8, 8, 8, 8, 8, 19, 8,
-        4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 0, 4, 4, 4, 4,
-        4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4,
-        4, 14, 4, 23, 4, 15, 4, 4, 4, 8, 4, 4, 4, 4, 4, 4,
-        4, 4, 4, 4, 4, 4, 4, 4, 4, 10, 4, 4, 4, 4, 4, 4,
+        9, 14, 14, 14, 14, 15, 11, 15, 9, 14, 14, 0, 14, 21, 11, 15,
+        9, 14, 14, 14, 14, 15, 11, 15, 9, 14, 14, 15, 14, 4, 11, 15,
+        9, 14, 14, 23, 14, 15, 11, 11, 9, 8, 14, 8, 14, 4, 11, 11,
+        9, 14, 14, 8, 14, 15, 11, 15, 9, 10, 14, 8, 14, 4, 11, 15,
     };
 
     static constexpr u8 indexBitCycles[256] {
@@ -396,6 +392,14 @@ private:
         memory.write8(--sp, pc & 0xFFU);
     }
 
+    void commonFlags(const u16 val)
+    {
+        flags.sf = static_cast<u16>(val) & 0x8000 ? sbit : 0;
+        flags.zf = val ? 0 : zbit;
+        flags.yf = static_cast<u16>(val) & 0x2000 ? ybit : 0;
+        flags.xf = static_cast<u16>(val) & 0x800 ? xbit : 0;
+    }
+
     void commonFlags(const u8 val)
     {
         flags.sf = val & sbit;
@@ -428,12 +432,93 @@ private:
         flags.xf = val & xbit;
     }
 
-    void blockIOFlags(int n)
+    void ioBlockFlags(const u8 tmp, const u16 tmp2, const int n)
     {
-        --regs.b;
         setOperand<AddressMode::RegisterHL>(pair(regs.h, regs.l) + n);
+        --regs.b;
+        commonFlags(regs.b);
+        flags.nf = (tmp & sbit) ? nbit : 0;
+        flags.pf = parity((tmp2 & 7U) ^ regs.b) ? pbit : 0;
+        flags.hf = tmp2 > 0xFFU ? hbit : 0;
+        flags.cf = tmp2 > 0xFFU ? cbit : 0;
+    }
+
+    template<AddressMode mode1, AddressMode mode2>
+    void storeBitResult(const u8 val)
+    {
+        // After getOperand() call, the pc is pointing at the opcode because the displacement byte is before the opcode.
+        // To write to the correct spot, have to decrement the pc. Then, in order to point to the next opcode, we have to
+        // add 2 to the pc.
+        if (mode1 == AddressMode::IndexedIX) {
+            memory.write8(static_cast<s8>(memory.read8(--pc)) + ix, val);
+            pc += 2;
+        } else if (mode1 == AddressMode::IndexedIY) {
+            memory.write8(static_cast<s8>(memory.read8(--pc)) + iy, val);
+            pc += 2;
+        }
+
+        if (mode2 != AddressMode::IndexedIX and mode2 != AddressMode::IndexedIY)
+            setOperand<mode2>(val);
+    }
+
+    void memoryLdBlock(const int n)
+    {
+        const u8 tmp {memory.read8(pair(regs.h, regs.l))};
+        memory.write8(pair(regs.d, regs.e), tmp);
+
+        setOperand<AddressMode::RegisterBC>(pair(regs.b, regs.c) - 1);
+        setOperand<AddressMode::RegisterDE>(pair(regs.d, regs.e) + n);
+        setOperand<AddressMode::RegisterHL>(pair(regs.h, regs.l) + n);
+
+        flags.nf = 0;
+        flags.hf = 0;
+        flags.pf = pair(regs.b, regs.c) ? pbit : 0;
+
+        const u8 tmp2 {static_cast<u8>(tmp + a)};
+        flags.yf = (tmp2 & 0b10) << 4U;
+        flags.xf = tmp2 & xbit;
+        flagsWereModified = true;
+    }
+
+    void memoryCmpBlock(const int n)
+    {
+        const u8 subtrahend {memory.read8(pair(regs.h, regs.l))};
+        const u16 difference {static_cast<u16>(a - subtrahend)};
+        const u8 tmp {static_cast<u8>(difference)};
+        setOperand<AddressMode::RegisterBC>(pair(regs.b, regs.c) - 1);
+        setOperand<AddressMode::RegisterHL>(pair(regs.h, regs.l) + n);
+
+        flags.sf = tmp & sbit;
+        flags.zf = difference ? 0 : zbit;
+        flags.hf = halfcy(a, subtrahend, difference) ? hbit : 0;
+        flags.pf = pair(regs.b, regs.c) ? pbit : 0;
         flags.nf = nbit;
-        flags.zf = regs.b ? zbit : 0;
+
+        const u8 tmp2 {static_cast<u8>(difference - (flags.hf >> 4U))};
+        flags.yf = (tmp2 & 0b10) << 4U;
+        flags.xf = tmp2 & xbit;
+        wz  += n;
+        flagsWereModified = true;
+    }
+
+    void ioInBlock(const int n)
+    {
+        const u8 tmp {memory.input(this, regs.c)};
+        memory.write8(pair(regs.h, regs.l), tmp);
+
+        ioBlockFlags(tmp, tmp + ((regs.c + 1) & 0xFF), n);
+        wz = pair(regs.b + 1, regs.c) + n;
+        flagsWereModified = true;
+    }
+
+    void ioOutBlock(const int n)
+    {
+        const u8 tmp {memory.read8(pair(regs.h, regs.l))};
+        memory.output(this, regs.c, tmp);
+
+        ioBlockFlags(tmp, tmp + regs.l, n);
+        wz = pair(regs.b, regs.c) + n;
+        flagsWereModified = true;
     }
 
     void addition(const u8 augend, const u16 sum)
@@ -545,24 +630,7 @@ private:
     }
 
     // Block Transfer and Search Instructions
-    void ldi()
-    {
-        const u8 tmp {memory.read8(pair(regs.h, regs.l))};
-        memory.write8(pair(regs.d, regs.e), tmp);
-        setOperand<AddressMode::RegisterBC>(pair(regs.b, regs.c) - 1);
-        setOperand<AddressMode::RegisterDE>(pair(regs.d, regs.e) + 1);
-        setOperand<AddressMode::RegisterHL>(pair(regs.h, regs.l) + 1);
-
-        flags.nf = 0;
-        flags.hf = 0;
-        flags.pf = pair(regs.b, regs.c) ? pbit : 0;
-
-        const u8 n {static_cast<u8>(tmp + a)};
-        flags.yf = (n & 0b10) << 4U;
-        flags.xf = n & xbit;
-        flagsWereModified = true;
-    }
-
+    void ldi() { memoryLdBlock(1); }
     void ldir()
     {
         ldi();
@@ -573,24 +641,7 @@ private:
         }
     }
 
-    void ldd()
-    {
-        const u8 tmp {memory.read8(pair(regs.h, regs.l))};
-        memory.write8(pair(regs.d, regs.e), tmp);
-        setOperand<AddressMode::RegisterBC>(pair(regs.b, regs.c) - 1);
-        setOperand<AddressMode::RegisterDE>(pair(regs.d, regs.e) - 1);
-        setOperand<AddressMode::RegisterHL>(pair(regs.h, regs.l) - 1);
-
-        flags.nf = 0;
-        flags.hf = 0;
-        flags.pf = pair(regs.b, regs.c) ? pbit : 0;
-
-        const u8 n {static_cast<u8>(tmp + a)};
-        flags.yf = (n & 0b10) << 4U;
-        flags.xf = n & xbit;
-        flagsWereModified = true;
-    }
-
+    void ldd() { memoryLdBlock(-1); }
     void lddr()
     {
         ldd();
@@ -601,27 +652,7 @@ private:
         }
     }
 
-    void cpi()
-    {
-        const u8 subtrahend {memory.read8(pair(regs.h, regs.l))};
-        const u16 difference {static_cast<u16>(a - subtrahend)};
-        const u8 tmp {static_cast<u8>(difference)};
-        setOperand<AddressMode::RegisterBC>(pair(regs.b, regs.c) - 1);
-        setOperand<AddressMode::RegisterHL>(pair(regs.h, regs.l) + 1);
-
-        flags.sf = tmp & sbit;
-        flags.zf = difference ? 0 : zbit;
-        flags.hf = halfcy(a, subtrahend, difference) ? hbit : 0;
-        flags.pf = pair(regs.b, regs.c) ? pbit : 0;
-        flags.nf = nbit;
-
-        const u8 n {static_cast<u8>(difference - (flags.hf >> 4U))};
-        flags.yf = (n & 0b10) << 4U;
-        flags.xf = n & xbit;
-        ++wz;
-        flagsWereModified = true;
-    }
-
+    void cpi() { memoryCmpBlock(1); }
     void cpir()
     {
         cpi();
@@ -634,27 +665,7 @@ private:
         }
     }
 
-    void cpd()
-    {
-        const u8 subtrahend {memory.read8(pair(regs.h, regs.l))};
-        const u16 difference {static_cast<u16>(a - subtrahend)};
-        const u8 tmp {static_cast<u8>(difference)};
-        setOperand<AddressMode::RegisterBC>(pair(regs.b, regs.c) - 1);
-        setOperand<AddressMode::RegisterHL>(pair(regs.h, regs.l) - 1);
-
-        flags.sf = tmp & sbit;
-        flags.zf = difference ? 0 : zbit;
-        flags.hf = halfcy(a, subtrahend, difference) ? hbit : 0;
-        flags.pf = pair(regs.b, regs.c) ? pbit : 0;
-        flags.nf = nbit;
-
-        const u8 n {static_cast<u8>(difference - (flags.hf >> 4U))};
-        flags.yf = (n & 0b10) << 4U;
-        flags.xf = n & xbit;
-        --wz;
-        flagsWereModified = true;
-    }
-
+    void cpd() { memoryCmpBlock(-1); }
     void cpdr()
     {
         cpd();
@@ -812,10 +823,7 @@ private:
         flags.hf = halfcy(addend, augend, sum) ? hbit : 0;
         flags.pf = (addend ^ sum) & (augend ^ sum) & 0x8000U ? pbit : 0;
         flags.nf = 0;
-        flags.sf = static_cast<u16>(sum) & 0x8000 ? sbit : 0;
-        flags.zf = sum ? 0 : zbit;
-        flags.yf = static_cast<u16>(sum) & 0x2000 ? ybit : 0;
-        flags.xf = static_cast<u16>(sum) & 0x800 ? xbit : 0;
+        commonFlags(static_cast<u16>(sum));
         setOperand<mode1>(static_cast<u16>(sum));
         flagsWereModified = true;
     }
@@ -831,10 +839,7 @@ private:
         flags.hf = halfcy(minuend, subtrahend, difference) ? hbit : 0;
         flags.pf = (difference ^ minuend) & (subtrahend ^ minuend) & 0x8000U ? pbit : 0;
         flags.nf = nbit;
-        flags.sf = static_cast<u16>(difference) & 0x8000 ? sbit : 0;
-        flags.zf = difference ? 0 : zbit;
-        flags.yf = static_cast<u16>(difference) & 0x2000 ? ybit : 0;
-        flags.xf = static_cast<u16>(difference) & 0x800 ? xbit : 0;
+        commonFlags(static_cast<u16>(difference));
         setOperand<mode1>(static_cast<u16>(difference));
         flagsWereModified = true;
     }
@@ -956,24 +961,6 @@ private:
         a = (a >> 1U) | (tmp << 7U);
         rotateFlagsA(a);
         flagsWereModified = true;
-    }
-
-    template<AddressMode mode1, AddressMode mode2>
-    void storeBitResult(const u8 val)
-    {
-        // After getOperand() call, the pc is pointing at the opcode because the displacement byte is before the opcode.
-        // To write to the correct spot, have to decrement the pc. Then, in order to point to the next opcode, we have to
-        // add 2 to the pc.
-        if (mode1 == AddressMode::IndexedIX) {
-            memory.write8(static_cast<s8>(memory.read8(--pc)) + ix, val);
-            pc += 2;
-        } else if (mode1 == AddressMode::IndexedIY) {
-            memory.write8(static_cast<s8>(memory.read8(--pc)) + iy, val);
-            pc += 2;
-        }
-
-        if (mode2 != AddressMode::IndexedIX and mode2 != AddressMode::IndexedIY)
-            setOperand<mode2>(val);
     }
 
     template<AddressMode mode1, AddressMode mode2>
@@ -1240,24 +1227,7 @@ private:
         flagsWereModified = true;
     }
 
-    void ini()
-    {
-        const u8 tmp {memory.input(this, regs.c)};
-        memory.write8(pair(regs.h, regs.l), tmp);
-        setOperand<AddressMode::RegisterHL>(pair(regs.h, regs.l) + 1);
-
-        --regs.b;
-        commonFlags(regs.b);
-        flags.nf = (tmp & sbit) >> 5U;
-
-        const u16 tmp2 {static_cast<u16>(tmp + ((regs.c + 1) & 0xFF))};
-        flags.pf = parity((tmp2 & 7U) ^ regs.b) ? pbit : 0;
-        flags.hf = tmp2 > 0xFFU ? hbit : 0;
-        flags.cf = tmp2 > 0xFFU ? cbit : 0;
-        wz = pair(regs.b + 1, regs.c) + 1;
-        flagsWereModified = true;
-    }
-
+    void ini() { ioInBlock(1); }
     void inir()
     {
         ini();
@@ -1268,24 +1238,7 @@ private:
         }
     }
 
-    void ind()
-    {
-        const u8 tmp {memory.input(this, regs.c)};
-        memory.write8(pair(regs.h, regs.l), tmp);
-        setOperand<AddressMode::RegisterHL>(pair(regs.h, regs.l) - 1);
-
-        --regs.b;
-        commonFlags(regs.b);
-        flags.nf = (tmp & sbit) >> 5U;
-
-        const u16 tmp2 {static_cast<u16>(tmp + ((regs.c + 1) & 0xFF))};
-        flags.pf = parity((tmp2 & 7U) ^ regs.b) ? pbit : 0;
-        flags.hf = tmp2 > 0xFFU ? hbit : 0;
-        flags.cf = tmp2 > 0xFFU ? cbit : 0;
-        wz = pair(regs.b + 1, regs.c) - 1;
-        flagsWereModified = true;
-    }
-
+    void ind() { ioInBlock(-1); }
     void indr()
     {
         ind();
@@ -1310,24 +1263,7 @@ private:
         if (mode != AddressMode::Null) wz = pair(regs.b, regs.c) + 1;
     }
 
-    void outi()
-    {
-        const u8 tmp {memory.read8(pair(regs.h, regs.l))};
-        memory.output(this, regs.c, tmp);
-        setOperand<AddressMode::RegisterHL>(pair(regs.h, regs.l) + 1);
-
-        --regs.b;
-        commonFlags(regs.b);
-        flags.nf = (tmp & sbit) >> 5U;
-
-        const u16 tmp2 {static_cast<u16>(tmp + regs.l)};
-        flags.pf = parity((tmp2 & 7U) ^ regs.b) ? pbit : 0;
-        flags.hf = tmp2 > 0xFFU ? hbit : 0;
-        flags.cf = tmp2 > 0xFFU ? cbit : 0;
-        wz = pair(regs.b, regs.c) + 1;
-        flagsWereModified = true;
-    }
-
+    void outi() { ioOutBlock(1); }
     void otir()
     {
         outi();
@@ -1338,24 +1274,7 @@ private:
         }
     }
 
-    void outd()
-    {
-        const u8 tmp {memory.read8(pair(regs.h, regs.l))};
-        memory.output(this, regs.c, tmp);
-        setOperand<AddressMode::RegisterHL>(pair(regs.h, regs.l) - 1);
-
-        --regs.b;
-        commonFlags(regs.b);
-        flags.nf = (tmp & sbit) >> 5U;
-
-        const u16 tmp2 {static_cast<u16>(tmp + regs.l)};
-        flags.pf = parity((tmp2 & 7U) ^ regs.b) ? pbit : 0;
-        flags.hf = tmp2 > 0xFFU ? hbit : 0;
-        flags.cf = tmp2 > 0xFFU ? cbit : 0;
-        wz = pair(regs.b, regs.c) - 1;
-        flagsWereModified = true;
-    }
-
+    void outd(){ ioOutBlock(-1); }
     void otdr()
     {
         outd();
@@ -2270,7 +2189,7 @@ private:
         &z80::jp<Condition::C, AddressMode::ImmediateEx>, // $DA: jp c, nn
         &z80::in, // $DB: in a, (n)
         &z80::call<Condition::C, AddressMode::ImmediateEx>, // $DC: call c, nn
-        &z80::preIndexBit<modeD>, // $DD: IX
+        &z80::nop, // $DD: nop
         &z80::sbc8<AddressMode::Immediate>, // $DE: sbc a, n
         &z80::rst<0x18U>, // $DF: rst 24
         &z80::ret<Condition::PO>, // $E0: ret po

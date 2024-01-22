@@ -13,8 +13,8 @@ using json = nlohmann::json;
 static constexpr std::uint16_t start {0x100};
 static constexpr int clockSpeed {static_cast<int>(2.5e6)}; // 2.5 MHz
 static constexpr int cycles {clockSpeed / 60};
-static constexpr bool logging {false};
-static constexpr bool verbose {false};
+static constexpr bool logging {false}; // log the cpu state every instruction **NOTE: will output dozens of gb of data!**
+static constexpr bool verbose {false}; // output every read/write instruction, address, and value read/written
 
 struct Memory {
     std::array<std::uint8_t, 0x10000> ram {};
@@ -265,17 +265,19 @@ int main(int argc, char** argv)
 
     // run unit tests
     /*
-        Get the *.json files from here (https://github.com/raddad772/jsmoo/tree/main/misc/tests/GeneratedTests/z80)
-        Known to fail the following:
-            - Unimplemented: ED 77, ED 76, ED 66, ED 4E, ED 6E, ED 7E, ED 7F
-            - I/O Related: 08, D9, DD 08, DD D9, FD 08, FD 09,
-            - LDI/LDIR/LDD/LDDR/CPI/CPIR/CPD/CPDR/INI/INIR/IND/INDR/OUTI/OTIR/OUTD/OTDR: Flags XF and YF
+     *   Get the *.json files from here (https://github.com/raddad772/jsmoo/tree/main/misc/tests/GeneratedTests/z80)
+     *   Known to fail the following:
+     *       - Unimplemented: ED 77, ED 76, ED 66, ED 4E, ED 6E, ED 7E, ED 7F
+     *       - I/O Related: 08, D9, DD 08, DD D9, FD 08, FD 09,
+     *       - LDI/LDIR/LDD/LDDR/CPI/CPIR/CPD/CPDR/INI/INIR/IND/INDR/OUTI/OTIR/OUTD/OTDR: Flags XF and YF
+     */
+    /*
     z.memory.cpm = false;
     std::cout << "*** Running unit tests\n";
     int passed {0}, failed {0};
     const std::chrono::steady_clock::time_point begin2 {std::chrono::steady_clock::now()};
     for (const auto & entry : std::filesystem::directory_iterator("tests/unit-tests"))
-        unitTest(z, entry.path()) ? ++passed : ++failed;
+        if (entry.path().string().find(".json") != std::string::npos) unitTest(z, entry.path()) ? ++passed : ++failed;
 
     std::cout << std::format("*** Unit testing complete in {:s}. Passed {:d}, Failed {:d}\n\n", formatTime(begin2, std::chrono::steady_clock::now()), passed, failed);
     */
