@@ -75,7 +75,7 @@ int load(z80<Memory>& z, std::string path)
         std::cerr << std::format("error: unable to open file '{:s}'.\n", path);
         return -2;
     }
-    file.read(reinterpret_cast<char*>(&z.memory.ram[start]), z.memory.ram.size());
+    file.read(reinterpret_cast<char*>(&z.hardware.ram[start]), z.hardware.ram.size());
 
     return 0;
 }
@@ -109,19 +109,19 @@ void test(z80<Memory>& z, std::string rom, const unsigned long long expected)
     std::cout << std::format("*** TEST: {:s}\n", rom);
 
     // inject output instruction at 0x0 to stop the test
-    z.memory.ram[0x0] = 0xD3; // $D3 = out (n), a
-    z.memory.ram[0x1] = 0x00; // (n) = 0
+    z.hardware.ram[0x0] = 0xD3; // $D3 = out (n), a
+    z.hardware.ram[0x1] = 0x00; // (n) = 0
 
     // inject input instruction at 0x5 to output some characters
-    z.memory.ram[0x5] = 0xDB; // $DB = in a, (n)
-    z.memory.ram[0x6] = 0x00; // (n) = 0
+    z.hardware.ram[0x5] = 0xDB; // $DB = in a, (n)
+    z.hardware.ram[0x6] = 0x00; // (n) = 0
 
     // inject ret instruction at 0x7 to return from syscall
-    z.memory.ram[0x7] = 0xC9; // $C9 = ret
+    z.hardware.ram[0x7] = 0xC9; // $C9 = ret
 
     // reset the cpu
     z.reset();
-    z.pc = start; z.memory.exit = false;
+    z.pc = start; z.hardware.exit = false;
 
     unsigned long long count {0}; // holds number of executed instructions
     unsigned long long executed {0}; // holds number of executed cycles
@@ -129,10 +129,10 @@ void test(z80<Memory>& z, std::string rom, const unsigned long long expected)
 
     // run the test
     if constexpr (logging) log(z, 0);
-    while(!z.memory.exit) {
+    while(!z.hardware.exit) {
         z.requested = cycles - z.requested;
 
-        while(z.requested > 0 and !z.memory.exit) {
+        while(z.requested > 0 and !z.hardware.exit) {
             const int tmp {z.requested};
             z.step();
             ++count;
@@ -204,14 +204,14 @@ bool unitTest(z80<Memory>& z, const std::filesystem::path& path)
 
         // set initial RAM state from test
         for (const auto& data : test["initial"]["ram"])
-            z.memory.ram[data[0]] = data[1];
+            z.hardware.ram[data[0]] = data[1];
 
         // set PORTs for input
         if (test.contains("ports")) {
             for (const auto& data : test["ports"]) {
                 if (data[2] != "r") continue;
                 std::uint8_t port {data[0]};
-                z.memory.ram[port] = data[1];
+                z.hardware.ram[port] = data[1];
             }
         }
 
@@ -220,7 +220,7 @@ bool unitTest(z80<Memory>& z, const std::filesystem::path& path)
 
         // compare final RAM state to test and report any errors
         for (const auto& data : test["final"]["ram"])
-            passed &= equality8(data[1], z.memory.ram[data[0]], "RAM");
+            passed &= equality8(data[1], z.hardware.ram[data[0]], "RAM");
 
         // compare final processor state to test and report any errors
         passed &= equality16(test["final"]["pc"], z.pc, "PC");
@@ -254,7 +254,8 @@ bool unitTest(z80<Memory>& z, const std::filesystem::path& path)
 int main(int argc, char** argv)
 {
     const std::string env {argv[0]};
-    z80<Memory> z {};
+    Memory memory {};
+    z80 z {memory};
 
     const std::chrono::steady_clock::time_point begin {std::chrono::steady_clock::now()};
 
