@@ -273,7 +273,7 @@ int main(int argc, char** argv)
      *       - LDI/LDIR/LDD/LDDR/CPI/CPIR/CPD/CPDR/INI/INIR/IND/INDR/OUTI/OTIR/OUTD/OTDR: Flags XF and YF
      */
     /*
-    z.memory.cpm = false;
+    memory.cpm = false;
     std::cout << "*** Running unit tests\n";
     int passed {0}, failed {0};
     const std::chrono::steady_clock::time_point begin2 {std::chrono::steady_clock::now()};
