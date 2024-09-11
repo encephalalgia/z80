@@ -3,7 +3,7 @@ project(z80
         LANGUAGES CXX
         VERSION 0.0.0
         DESCRIPTION "A Z80 emulator as a header-only library"
-        HOMEPAGE_URL "https://github.com/harrow22/z80"
+        HOMEPAGE_URL "https://github.com/encephalalgia/z80"
 )
 
 set(CMAKE_CXX_STANDARD 20)
